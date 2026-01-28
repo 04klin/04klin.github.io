@@ -1,0 +1,8 @@
+#sidebar #avatar img {
+  /* If the image is centered weirdly in the circle, adjust these % */
+  object-fit: cover;
+  object-position: 50% 20%;
+
+  /* Example: If you need to shift the image up/down/left/right */
+  /* object-position: 50% 20%; */
+}
