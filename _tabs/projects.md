@@ -9,3 +9,5 @@ order: 3
 1. Self-Driving Cars
 
 2. Senior Design GitHub Commit History Replay
+
+3. Software Engineering Project (wolfcafe)
