@@ -5,18 +5,22 @@ import { Image } from "astro:assets";
 
 const flickrPhotos = [
   {
+    thumbnail: "/assets/photography/thumbnails/hills_thumbnail.jpeg",
     src: "/assets/photography/hills.jpg",
     alt: "Mt. Fuji with friends - Group",
   },
   {
+    thumbnail: "/assets/photography/thumbnails/marketplace_thumbnail.jpeg",
     src: "/assets/photography/marketplace.jpg",
     alt: "Mt. Fuji with friends - Marketplace",
   },
   {
+    thumbnail: "/assets/photography/thumbnails/alleyway_thumbnail.jpeg",
     src: "/assets/photography/alleyway.jpg",
     alt: "Mt. Fuji with friends - Alleyway",
   },
   {
+    thumbnail: "/assets/photography/thumbnails/mnt_fuji_thumbnail.jpeg",
     src: "/assets/photography/mnt_fuji.jpg",
     alt: "Mt. Fuji with friends - Pic of Mount Fuji",
   },
@@ -33,7 +37,14 @@ const flickrPhotos = [
         <button id="close-lightbox" class="close-btn" aria-label="Close modal"
           >&times;</button
         >
-        <img id="lightbox-img" src="" alt="Enlarged view" />
+        <div id="loading-spinner" class="spinner"></div>
+
+        <img
+          id="lightbox-img"
+          src=""
+          alt="Enlarged view"
+          style="display: none;"
+        />
       </div>
     </dialog>
 
@@ -58,12 +69,13 @@ const flickrPhotos = [
             <section class="items-container">
               <div class="featured-photo">
                 <Image
-                  src="/assets/photography/grandfather_mnt_peak.jpg"
+                  src="/assets/photography/thumbnails/grandfather_mnt_peak_thumbnail.jpeg"
                   alt="Grandfather Mountain"
                   width={1200}
                   height={800}
                   format="webp"
                   class="featured-image lightbox-trigger"
+                  data-full="/assets/photography/grandfather_mnt_peak.jpg"
                 />
                 <p>Grandfather Mountain (May 2025)</p>
               </div>
@@ -93,12 +105,13 @@ const flickrPhotos = [
                   flickrPhotos.map((photo) => (
                     <div class="photo-item">
                       <Image
-                        src={photo.src}
+                        src={photo.thumbnail}
                         alt={photo.alt}
                         height={800}
                         width={800}
                         format="webp"
                         class="grid-image lightbox-trigger"
+                        data-full={photo.src}
                       />
                     </div>
                   ))
@@ -117,31 +130,71 @@ const flickrPhotos = [
   const lightbox = document.getElementById("lightbox");
   const lightboxImg = document.getElementById("lightbox-img");
   const closeBtn = document.getElementById("close-lightbox");
+  const spinner = document.getElementById("loading-spinner");
   const triggerImages = document.querySelectorAll(".lightbox-trigger");
 
   // Open lightbox when an image is clicked
   triggerImages.forEach((img) => {
     img.addEventListener("click", (e) => {
-      const src = (e.target as HTMLImageElement).src;
-      lightboxImg.src = src;
+      const highResSrc = (e.target as HTMLImageElement).dataset.full;
+
+      // 1. Show the spinner and hide the image tag
+      spinner.style.display = "block";
+      lightboxImg.style.display = "none";
+
+      // 2. Set the new source to start the download
+      lightboxImg.src = highResSrc;
+
+      // 3. Open the modal
       lightbox.showModal();
     });
   });
 
-  // Close lightbox on 'X' button click
-  closeBtn.addEventListener("click", () => {
-    lightbox.close();
+  // When the new high-res image finishes downloading...
+  lightboxImg.addEventListener("load", () => {
+    // Hide the spinner and reveal the loaded image
+    spinner.style.display = "none";
+    lightboxImg.style.display = "block";
   });
 
-  // Close lightbox when clicking outside the image (on the dark backdrop)
+  // Helper function to close and clear
+  function closeAndClearLightbox() {
+    lightbox.close();
+    // Clear the src so the old image doesn't flash the next time you open it
+    setTimeout(() => {
+      lightboxImg.src = "";
+    }, 200); // Slight delay ensures it clears AFTER the dialog disappears
+  }
+
+  // Close lightbox on 'X' button click
+  closeBtn.addEventListener("click", closeAndClearLightbox);
+
+  // Close lightbox when clicking outside the image
   lightbox.addEventListener("click", (e) => {
     if (e.target === lightbox) {
-      lightbox.close();
+      closeAndClearLightbox();
     }
   });
 </script>
 
 <style>
+  .spinner {
+    display: none; /* Hidden by default */
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+    position: absolute;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   /* Interactive class applied to ANY clickable photo */
   .lightbox-trigger {
     cursor: pointer;
@@ -177,13 +230,6 @@ const flickrPhotos = [
     height: 300px;
     object-fit: cover;
     border-radius: 8px; /* Gives the images a nice modern, rounded edge */
-    transition: transform 0.2s ease-in-out;
-    cursor: pointer;
-  }
-
-  /* Optional: Add a small hover effect */
-  .grid-image:hover {
-    transform: scale(1.02);
   }
 
   /* Lightbox Background & Positioning */
