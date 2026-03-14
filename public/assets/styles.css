@@ -445,7 +445,7 @@ p {
   font-size: 16px;
 }
 
-.resouce-items {
+.resource-items {
   grid-column-gap: 64px;
   grid-row-gap: 64px;
   flex-direction: column;

@@ -1,11 +1,24 @@
 ---
 import Header from "../components/Header.astro";
 import Sidebar from "../components/Sidebar.astro";
-const projects = [
+import { Image } from "astro:assets";
+
+const flickrPhotos = [
   {
-    title: "In Progress",
-    desc: ["TODO"],
-    tech: ["Node.js", "NPM"],
+    src: "/assets/photography/hills.jpg",
+    alt: "Mt. Fuji with friends - Group",
+  },
+  {
+    src: "/assets/photography/marketplace.jpg",
+    alt: "Mt. Fuji with friends - Marketplace",
+  },
+  {
+    src: "/assets/photography/alleyway.jpg",
+    alt: "Mt. Fuji with friends - Alleyway",
+  },
+  {
+    src: "/assets/photography/mnt_fuji.jpg",
+    alt: "Mt. Fuji with friends - Pic of Mount Fuji",
   },
 ];
 ---
@@ -14,43 +27,223 @@ const projects = [
 <html>
   <Header title="Photography | Kevin Lin" />
   <body>
+    {/** Dialog for popup modal */}
+    <dialog id="lightbox" class="lightbox">
+      <div class="lightbox-content">
+        <button id="close-lightbox" class="close-btn" aria-label="Close modal"
+          >&times;</button
+        >
+        <img id="lightbox-img" src="" alt="Enlarged view" />
+      </div>
+    </dialog>
+
     <div class="content">
       <Sidebar selectedItem="photography" />
       <nav class="main">
         <div class="container">
           <div class="back-nav-container">
-            <a href="/" class="back-nav-button w-inline-block"
-              ><img
+            <a href="/" class="back-nav-button w-inline-block">
+              <img
                 src="/assets/icons/back.svg"
                 loading="lazy"
                 alt=""
                 class="back-nav-img"
               />
-              <div>Back</div></a
-            >
+              <div>Back</div>
+            </a>
           </div>
           <div class="content-container">
             <h1>Photography</h1>
+
             <section class="items-container">
-              <img
-                src="/assets/photography/mnt_fuji.jpg"
-                alt="Photo of friends"
-              />
-              <p>Fujikawaguchiko, Japan (Dec 2025)</p>
+              <div class="featured-photo">
+                <Image
+                  src="/assets/photography/grandfather_mnt_peak.jpg"
+                  alt="Grandfather Mountain"
+                  width={1200}
+                  height={800}
+                  format="webp"
+                  class="featured-image lightbox-trigger"
+                />
+                <p>Grandfather Mountain (May 2025)</p>
+              </div>
 
               <br />
               <br />
-              <br />
-              <br />
-              <div class="resouce-items">
-                <p>More coming soon...</p>
+
+              {/** Link to Flikr */}
+              <div>
+                <a
+                  href="https://www.flickr.com/photos/04klin/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="button"
+                >
+                  View my full portfolio on Flickr ↗
+                </a>
               </div>
+
+              <br />
+              <br />
+
+              <h3>Japan 2025</h3>
+
+              <div class="photo-grid">
+                {
+                  flickrPhotos.map((photo) => (
+                    <div class="photo-item">
+                      <Image
+                        src={photo.src}
+                        alt={photo.alt}
+                        height={800}
+                        width={800}
+                        format="webp"
+                        class="grid-image lightbox-trigger"
+                      />
+                    </div>
+                  ))
+                }
+              </div>
+              <br />
             </section>
           </div>
         </div>
       </nav>
     </div>
-
-    <!--[if lte IE 9]><script src="//cdnjs.cloudflare.com/ajax/libs/placeholders/3.0.2/placeholders.min.js"></script><![endif]-->
   </body>
 </html>
+
+<script>
+  const lightbox = document.getElementById("lightbox");
+  const lightboxImg = document.getElementById("lightbox-img");
+  const closeBtn = document.getElementById("close-lightbox");
+  const triggerImages = document.querySelectorAll(".lightbox-trigger");
+
+  // Open lightbox when an image is clicked
+  triggerImages.forEach((img) => {
+    img.addEventListener("click", (e) => {
+      const src = (e.target as HTMLImageElement).src;
+      lightboxImg.src = src;
+      lightbox.showModal();
+    });
+  });
+
+  // Close lightbox on 'X' button click
+  closeBtn.addEventListener("click", () => {
+    lightbox.close();
+  });
+
+  // Close lightbox when clicking outside the image (on the dark backdrop)
+  lightbox.addEventListener("click", (e) => {
+    if (e.target === lightbox) {
+      lightbox.close();
+    }
+  });
+</script>
+
+<style>
+  /* Interactive class applied to ANY clickable photo */
+  .lightbox-trigger {
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+  }
+
+  .lightbox-trigger:hover {
+    transform: scale(1.02);
+  }
+
+  /* Full-width featured image styling */
+  .featured-image {
+    width: 100%;
+    height: auto; /* Keeps the aspect ratio intact */
+    border-radius: 8px;
+    object-fit: cover;
+  }
+
+  /* CSS Grid Layout */
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+  }
+
+  /* Image Styling within the grid */
+  .grid-image {
+    width: 100%;
+    /* Fixed height + object-fit ensures all grid boxes are uniformly sized 
+       even if your photos have different aspect ratios (portrait vs landscape) */
+    height: 300px;
+    object-fit: cover;
+    border-radius: 8px; /* Gives the images a nice modern, rounded edge */
+    transition: transform 0.2s ease-in-out;
+    cursor: pointer;
+  }
+
+  /* Optional: Add a small hover effect */
+  .grid-image:hover {
+    transform: scale(1.02);
+  }
+
+  /* Lightbox Background & Positioning */
+  .lightbox {
+    border: none;
+    border-radius: 8px;
+    padding: 0;
+    background: transparent;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: visible;
+  }
+
+  /* The dark overlay behind the image */
+  .lightbox::backdrop {
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(
+      4px
+    ); /* Optional: adds a nice blur to the background */
+  }
+
+  /* Container for the image and close button */
+  .lightbox-content {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* The enlarged image */
+  #lightbox-img {
+    max-width: 100%;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+
+  /* The close 'X' button */
+  .close-btn {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    background: white;
+    color: black;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.2s;
+  }
+
+  .close-btn:hover {
+    transform: scale(1.1);
+  }
+</style>
