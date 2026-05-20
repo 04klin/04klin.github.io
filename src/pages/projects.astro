@@ -4,15 +4,26 @@ import Project from "../components/Project.astro";
 import Sidebar from "../components/Sidebar.astro";
 const projects = [
   {
-    title: "GitHub Commit History Replay",
+    title: "Self Driving Cars",
+    desc: [
+      "Implemented lane following using a color mask, blob detection, and CTE calculations",
+      "Added stop sign detection with YOLO",
+    ],
+    link_desc: [`View the Demo Playlist \u2192`],
+    link: "https://www.youtube.com/playlist?list=PLnUax5602s6aKakl6MddQApi4Lxbcdk1r",
+    tech: ["Python", "YOLO", "ROS2", "CV2"],
+  },
+  {
+    title: "Repo Replay: A GitHub Commit History Replay Tool",
     desc: [
       "Problem: Teaching staff spends lots of time navigating code to understand what students have tried on their assignments",
       "Solution: Web app to simplify stepping through commit history of a specific file",
       "Architected a system able to handle over 20 concurrent users and over 2000 repositories per user",
       "Designed and implemented endpoints and UI components for the file explorer and branch dropdown functionality",
+      "View the demo video \u2192 https://youtu.be/H1HVZ4pPBGg",
     ],
-    link_desc: [`Work in progress: Demo \u2192`],
-    link: "https://drive.google.com/file/d/1eeMwEnQNaOS57KqzX8oi7qN7MaZsoWa9/view?usp=sharing",
+    link_desc: [`View the Poster \u2192`],
+    link: "/assets/poster_and_pies.png",
     tech: [
       "React",
       "Typescript",
@@ -39,10 +50,10 @@ const projects = [
   {
     title: "Liquid Rocketry Lab: Mission Control",
     desc: [
-      "Led a team of 4 to maintain and develop new features for the mission control platform using agile methodology",
+      "Led a team of 4 to maintain and develop new features for the mission control platform",
       "Led the development of a feature to monitor 10+ unique events, improving real-time data visibility",
       "Enhanced 10+ UI components which contribute to safer tests",
-      "Redesigned backend event system architecture to improve data reliability and decrease code complexity",
+      "Redesigned backend event handler architecture to decrease code complexity",
     ],
     link_desc: [`View the club \u2192`],
     link: "https://liquidrocketry.com/",
