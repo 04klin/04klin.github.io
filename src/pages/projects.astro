@@ -9,8 +9,12 @@ const projects = [
       "Implemented lane following using a color mask, blob detection, and CTE calculations",
       "Added stop sign detection with YOLO",
     ],
-    link_desc: [`View the Demo Playlist \u2192`],
-    link: "https://www.youtube.com/playlist?list=PLnUax5602s6aKakl6MddQApi4Lxbcdk1r",
+    links: [
+      {
+        text: "View the Demo Playlist →",
+        url: "https://www.youtube.com/playlist?list=PLnUax5602s6aKakl6MddQApi4Lxbcdk1r",
+      },
+    ],
     tech: ["Python", "YOLO", "ROS2", "CV2"],
   },
   {
@@ -20,10 +24,15 @@ const projects = [
       "Solution: Web app to simplify stepping through commit history of a specific file",
       "Architected a system able to handle over 20 concurrent users and over 2000 repositories per user",
       "Designed and implemented endpoints and UI components for the file explorer and branch dropdown functionality",
-      "View the demo video \u2192 https://youtu.be/H1HVZ4pPBGg",
     ],
-    link_desc: [`View the Poster \u2192`],
-    link: "/assets/poster_and_pies.png",
+    links: [
+      { text: "View the Poster →", url: "/assets/poster_and_pies.png" },
+      { text: "View the demo video →", url: "https://youtu.be/H1HVZ4pPBGg" },
+      {
+        text: "View the source code →",
+        url: "https://github.com/04klin/repo-replay",
+      },
+    ],
     tech: [
       "React",
       "Typescript",
@@ -42,8 +51,12 @@ const projects = [
       "Tested variable number of threads, datasets, and impl. (atomic ops vs critical sections)",
       "Found up to 16x speed up using the top-down atomic algo with 16 cores on a dense dataset compared to a top-down critical section algorithm",
     ],
-    link_desc: [`View my paper \u2192`],
-    link: "/assets/kevin_lin_final_paper_parallel_bfs_algorithms_and_optimizations.pdf",
+    links: [
+      {
+        text: "View my paper \u2192",
+        url: "/assets/kevin_lin_final_paper_parallel_bfs_algorithms_and_optimizations.pdf",
+      },
+    ],
     tech: ["OpenMP", "C++", "Shell"],
   },
 
@@ -55,8 +68,12 @@ const projects = [
       "Enhanced 10+ UI components which contribute to safer tests",
       "Redesigned backend event handler architecture to decrease code complexity",
     ],
-    link_desc: [`View the club \u2192`],
-    link: "https://liquidrocketry.com/",
+    links: [
+      {
+        text: "View the club \u2192",
+        url: "https://liquidrocketry.com",
+      },
+    ],
     tech: ["React", "Flask", "Docker", "MongoDB"],
   },
   {
@@ -65,8 +82,12 @@ const projects = [
       "Co-built a 2d platform game in the endless run genre",
       "Implemented UI functionality, map generation, player movement, and enemy spawn generation",
     ],
-    link_desc: ["View our game \u2192"],
-    link: "https://unstable-groot.itch.io/breaking-legs",
+    links: [
+      {
+        text: "View our game \u2192",
+        url: "https://unstable-groot.itch.io/breaking-legs",
+      },
+    ],
     tech: ["Unity", "C#"],
   },
 ];
@@ -101,8 +122,7 @@ const projects = [
                       title={project.title}
                       desc={project.desc}
                       tech={project.tech}
-                      link={project.link}
-                      link_desc={project.link_desc}
+                      links={project.links}
                     />
                   ))
                 }

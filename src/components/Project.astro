@@ -1,5 +1,6 @@
 ---
-const { title, desc, link_desc, link, tech } = Astro.props;
+// Project.astro
+const { title, desc, links = [], tech } = Astro.props;
 ---
 
 <div class="single-item">
@@ -12,11 +13,20 @@ const { title, desc, link_desc, link, tech } = Astro.props;
   </div>
 
   {
-    link && (
-      <br/>
-      <a href={link} class="button" target="_blank">
-        {link_desc}
-      </a>
+    links.length > 0 && (
+      <>
+        <br />
+        <div
+          class="button-group"
+          style="display: flex; gap: 10px; flex-wrap: wrap;"
+        >
+          {links.map((link) => (
+            <a href={link.url} class="button" target="_blank">
+              {link.text}
+            </a>
+          ))}
+        </div>
+      </>
     )
   }
 
