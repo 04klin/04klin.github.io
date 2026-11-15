@@ -1,0 +1,30 @@
+---
+import { Image } from "astro:assets";
+import Layout from "../layouts/Layout.astro";
+import mntFuji from "../assets/photography/mnt_fuji.jpg";
+---
+
+<!-- GitHub Pages serves the built 404.html for any path that does not exist. -->
+<Layout heading="404" lead="This page wandered off the trail.">
+  <section class="not-found">
+    <div class="button-row" data-reveal>
+      <a href="/" class="button button-primary">Take me home</a>
+      <a href="/projects" class="button">Projects</a>
+      <a href="/photography" class="button">Photography</a>
+    </div>
+
+    <figure class="not-found-photo" data-reveal>
+      <Image
+        src={mntFuji}
+        alt="Mt. Fuji, mostly hidden by clouds"
+        width={1400}
+        height={600}
+        fit="cover"
+        loading="eager"
+      />
+      <figcaption class="mini-label">
+        Searched up here too. Nothing but clouds.
+      </figcaption>
+    </figure>
+  </section>
+</Layout>

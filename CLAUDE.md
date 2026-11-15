@@ -27,7 +27,9 @@ Every push to `main` triggers `.github/workflows/deploy.yml`, which runs the bui
 
 The site separates content, structure and styling so that each can change alone (a theme change should touch only the layout, components and CSS).
 
-**Layout.** Every page wraps its content in `src/layouts/Layout.astro`, which owns the `<head>`, the fixed backdrop, the top bar (`SiteHeader.astro`), the `<main class="page">` column and the footer (`SiteFooter.astro`). Props: `current` (which nav link to highlight), optional `heading` and optional `lead`. With `heading`, the layout renders the `<h1>`, the `lead` line under it and a `"<heading> | Kevin Lin"` title; without it (home page only) the slot is rendered bare.
+**Layout.** Every page wraps its content in `src/layouts/Layout.astro`, which owns the `<head>`, the fixed backdrop, the top bar (`SiteHeader.astro`), the `<main class="page">` column and the footer (`SiteFooter.astro`). Props, all optional: `current` (which nav link to highlight; omitted on `404.astro`), `heading` and `lead`. With `heading`, the layout renders the `<h1>`, the `lead` line under it and a `"<heading> | Kevin Lin"` title; without it (home page only) the slot is rendered bare.
+
+**404.** `src/pages/404.astro` builds `404.html`, which GitHub Pages serves for unknown paths.
 
 **Navigation and contact details.** `src/site.ts` exports `navItems`, the single source for the top bar links, and `contact` (email, GitHub, resume path), used by the home page and the footer. The `NavKey` type is derived from `navItems`, so `current` is type-checked.
 

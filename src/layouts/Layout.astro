@@ -5,8 +5,8 @@ import SiteHeader from "../components/SiteHeader.astro";
 import { siteName, type NavKey } from "../site";
 
 interface Props {
-  /** Which top bar link to highlight. */
-  current: NavKey;
+  /** Which top bar link to highlight. Omit on pages outside the nav. */
+  current?: NavKey;
   /**
    * Page heading. When set, the page gets an <h1> and a
    * "<heading> | <site name>" title. Omit it for the home page.
