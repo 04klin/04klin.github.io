@@ -1,138 +1,19 @@
 ---
-import Header from "../components/Header.astro";
+import { getCollection } from "astro:content";
+import Layout from "../layouts/Layout.astro";
 import Project from "../components/Project.astro";
-import Sidebar from "../components/Sidebar.astro";
-const projects = [
-  {
-    title: "Self Driving Cars",
-    desc: [
-      "Implemented lane following using a color mask, blob detection, and CTE calculations",
-      "Added stop sign detection with YOLO",
-    ],
-    links: [
-      {
-        text: "View the Demo Playlist →",
-        url: "https://www.youtube.com/playlist?list=PLnUax5602s6aKakl6MddQApi4Lxbcdk1r",
-      },
-    ],
-    tech: ["Python", "YOLO", "ROS2", "CV2"],
-  },
-  {
-    title: "Repo Replay: A GitHub Commit History Replay Tool",
-    desc: [
-      "Problem: Teaching staff spends lots of time navigating code to understand what students have tried on their assignments",
-      "Solution: Web app to simplify stepping through commit history of a specific file",
-      "Architected a system able to handle over 20 concurrent users and over 2000 repositories per user",
-      "Designed and implemented endpoints and UI components for the file explorer and branch dropdown functionality",
-    ],
-    links: [
-      { text: "View the Poster →", url: "/assets/poster_and_pies.png" },
-      { text: "View the demo video →", url: "https://youtu.be/H1HVZ4pPBGg" },
-      {
-        text: "View the source code →",
-        url: "https://github.com/04klin/repo-replay",
-      },
-    ],
-    tech: [
-      "React",
-      "Typescript",
-      "Spring",
-      "Java",
-      "PostgreSQL",
-      "Docker",
-      "Tailwind",
-    ],
-  },
-  {
-    title: "University: Final Paper on BFS Algorithms",
-    desc: [
-      "Performance analysis of BFS algorithms",
-      "Compared top-down, bottom-up, and hybrid (direction optimizing) algorithms",
-      "Tested variable number of threads, datasets, and impl. (atomic ops vs critical sections)",
-      "Found up to 16x speed up using the top-down atomic algo with 16 cores on a dense dataset compared to a top-down critical section algorithm",
-    ],
-    links: [
-      {
-        text: "View my paper \u2192",
-        url: "/assets/kevin_lin_final_paper_parallel_bfs_algorithms_and_optimizations.pdf",
-      },
-    ],
-    tech: ["OpenMP", "C++", "Shell"],
-  },
 
-  {
-    title: "Liquid Rocketry Lab: Mission Control",
-    desc: [
-      "Led a team of 4 to maintain and develop new features for the mission control platform",
-      "Led the development of a feature to monitor 10+ unique events, improving real-time data visibility",
-      "Enhanced 10+ UI components which contribute to safer tests",
-      "Redesigned backend event handler architecture to decrease code complexity",
-    ],
-    links: [
-      {
-        text: "View the club \u2192",
-        url: "https://liquidrocketry.com",
-      },
-    ],
-    tech: ["React", "Flask", "Docker", "MongoDB"],
-  },
-  {
-    title: "Game Jam: Breaking Legs",
-    desc: [
-      "Co-built a 2d platform game in the endless run genre",
-      "Implemented UI functionality, map generation, player movement, and enemy spawn generation",
-    ],
-    links: [
-      {
-        text: "View our game \u2192",
-        url: "https://unstable-groot.itch.io/breaking-legs",
-      },
-    ],
-    tech: ["Unity", "C#"],
-  },
-];
+const projects = (await getCollection("projects")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
 ---
 
-<!doctype html>
-<html>
-  <Header title="Projects | Kevin Lin" />
-  <body>
-    <div class="content">
-      <Sidebar selectedItem="projects" />
-      <nav class="main">
-        <div class="container">
-          <div class="back-nav-container">
-            <a href="/" class="back-nav-button w-inline-block"
-              ><img
-                src="/assets/icons/back.svg"
-                loading="lazy"
-                alt=""
-                class="back-nav-img"
-              />
-              <div>Back</div></a
-            >
-          </div>
-          <div class="content-container">
-            <h1>Projects</h1>
-            <section class="items-container">
-              <div class="resource-items">
-                {
-                  projects.map((project) => (
-                    <Project
-                      title={project.title}
-                      desc={project.desc}
-                      tech={project.tech}
-                      links={project.links}
-                    />
-                  ))
-                }
-              </div>
-            </section>
-          </div>
-        </div>
-      </nav>
-    </div>
-
-    <!--[if lte IE 9]><script src="//cdnjs.cloudflare.com/ajax/libs/placeholders/3.0.2/placeholders.min.js"></script><![endif]-->
-  </body>
-</html>
+<Layout
+  current="projects"
+  heading="Projects"
+  lead="Coursework, club work and side projects."
+>
+  <section class="project-list">
+    {projects.map((project) => <Project id={project.id} {...project.data} />)}
+  </section>
+</Layout>

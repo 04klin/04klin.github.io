@@ -1,51 +1,108 @@
 ---
+import { ClientRouter } from "astro:transitions";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import { siteName, type NavKey } from "../site";
+
 interface Props {
-  title: string;
+  /** Which top bar link to highlight. */
+  current: NavKey;
+  /**
+   * Page heading. When set, the page gets an <h1> and a
+   * "<heading> | <site name>" title. Omit it for the home page.
+   */
+  heading?: string;
+  /** One line under the heading. */
+  lead?: string;
 }
 
-const { title } = Astro.props;
+const { current, heading, lead } = Astro.props;
+const title = heading ? `${heading} | ${siteName}` : siteName;
 ---
 
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="description" content="Astro description" />
-    <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg" />
-    <meta name="generator" content={Astro.generator} />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
     <title>{title}</title>
+    <meta content={title} property="og:title" />
+    <meta content={title} property="twitter:title" />
+    <meta name="description" content="Kevin Lin's projects and photography." />
+    <meta name="theme-color" content="#0d0e0d" />
+    <ClientRouter />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link href="/assets/styles.css" rel="stylesheet" type="text/css" />
+    <link
+      href="/assets/tokyo_pfp.png"
+      rel="shortcut icon"
+      type="image/x-icon"
+    />
+    <link href="/assets/tokyo_pfp.png" rel="apple-touch-icon" />
+    <!-- Reveal animations need JS; without it, show everything. -->
+    <noscript>
+      <style>
+        [data-reveal] {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      </style>
+    </noscript>
   </head>
   <body>
-    <slot />
+    <!-- Kept across navigations so the aurora does not restart. -->
+    <div class="backdrop" aria-hidden="true" transition:persist="backdrop">
+      <div class="aurora aurora-a"></div>
+      <div class="aurora aurora-b"></div>
+      <div class="backdrop-grid"></div>
+    </div>
+    <div class="scroll-progress" aria-hidden="true"></div>
+
+    <SiteHeader current={current} />
+
+    <main class="page">
+      {
+        heading && (
+          <header class="page-header">
+            <h1 data-reveal>{heading}</h1>
+            {lead && (
+              <p class="lead" data-reveal>
+                {lead}
+              </p>
+            )}
+          </header>
+        )
+      }
+      <slot />
+    </main>
+
+    <SiteFooter />
+
+    <script>
+      import {
+        setupCardGlow,
+        setupReveal,
+        setupSpotlight,
+      } from "../scripts/motion";
+
+      let cleanups: (() => void)[] = [];
+      const cleanup = () => {
+        cleanups.forEach((fn) => fn());
+        cleanups = [];
+      };
+
+      document.addEventListener("astro:page-load", () => {
+        cleanup();
+        cleanups = [setupReveal(), setupSpotlight(), setupCardGlow()];
+      });
+      document.addEventListener("astro:before-swap", cleanup);
+    </script>
+
+
   </body>
 </html>
-<style is:global>
-  :root {
-    --accent: 136, 58, 234;
-    --accent-light: 224, 204, 250;
-    --accent-dark: 49, 10, 101;
-    --accent-gradient: linear-gradient(
-      45deg,
-      rgb(var(--accent)),
-      rgb(var(--accent-light)) 30%,
-      white 60%
-    );
-  }
-  html {
-    font-family: system-ui, sans-serif;
-    background: #13151a;
-    background-size: 224px;
-  }
-  code {
-    font-family:
-      Menlo,
-      Monaco,
-      Lucida Console,
-      Liberation Mono,
-      DejaVu Sans Mono,
-      Bitstream Vera Sans Mono,
-      Courier New,
-      monospace;
-  }
-</style>

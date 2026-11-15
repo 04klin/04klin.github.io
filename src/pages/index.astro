@@ -1,169 +1,215 @@
 ---
-import Header from "../components/Header.astro";
-import Sidebar from "../components/Sidebar.astro";
+import { Image } from "astro:assets";
+import { getCollection } from "astro:content";
+import Layout from "../layouts/Layout.astro";
+import { contact } from "../site";
+import alleyway from "../assets/photography/alleyway.jpg";
+import grandfatherMntPeak from "../assets/photography/grandfather_mnt_peak.jpg";
+import hills from "../assets/photography/hills.jpg";
+import marketplace from "../assets/photography/marketplace.jpg";
+import mntFuji from "../assets/photography/mnt_fuji.jpg";
+
+// Rotating endings for "I ..." under the greeting. The first one is what
+// shows without JavaScript or with reduced motion.
+const phrases = [
+  "love Claude Code.",
+  "love my work, and my work loves me.",
+  "write mission control software for rockets.",
+  "want to see the Aurora Borealis.",
+  "made a game for a game jam.",
+  "carry a camera up mountains.",
+  "can almost bench 225 lbs.",
+];
+
+const projects = (await getCollection("projects")).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+
+// The first projects (by `order`) get a wide card with a line of description.
+const WIDE_CARDS = 2;
+
+// Every technology used across the projects, for the scrolling strip.
+const allTech = [...new Set(projects.flatMap((project) => project.data.tech))];
+
+// Fanned-out prints next to the greeting. The last one sits on top.
+const stack = [marketplace, alleyway, mntFuji];
 ---
 
-<!doctype html>
-<html>
-  <Header title="Kevin Lin" />
-  <body>
-    <div class="content">
-      <Sidebar selectedItem="home" />
-      <nav class="main">
-        <div class="container">
-          <main class="fold-content-container">
-            <div class="fold-content">
-              <h1>Hi, I'm Kevin.</h1>
-            </div>
-            <div class="action-buttons">
-              <div class="contact-section">
-                <h3>Contact</h3>
-                <div class="contact-details">
-                  <p>
-                    <span class="label">
-                      <img
-                        src="/assets/icons/at-solid.svg"
-                        loading="eager"
-                        alt=""
-                        class="nav-link-image"
-                      />
-                    </span>
-                    2004klin@gmail.com
-                  </p>
-                  <p>
-                    <a
-                      href="https://linkedin.com/in/04klin"
-                      target="_blank"
-                      class="clean-link"
-                    >
-                      <img
-                        src="/assets/icons/linkedin-logo.svg"
-                        loading="eager"
-                        alt="LinkedIn"
-                        class="nav-link-image"
-                      />
-                      04klin
-                    </a>
-                  </p>
-                  <p>
-                    <a
-                      href="https://github.com/04klin"
-                      target="_blank"
-                      class="clean-link"
-                    >
-                      <img
-                        src="/assets/icons/github-octocat.svg"
-                        loading="eager"
-                        alt="GitHub"
-                        class="nav-link-image"
-                      />
-                      04klin
-                    </a>
-                  </p>
-                </div>
-                <br />
-                <div class="resume-section">
-                  <p>
-                    <a
-                      href="/assets/kevin_lin_resume_2026.pdf"
-                      target="_blank"
-                      class="button">View my Resume &rarr;</a
-                    >
-                  </p>
-                </div>
-              </div>
-            </div>
+<Layout current="home">
+  <section class="hero">
+    <div class="hero-text">
+      <h1 data-reveal>
+        Hi, I'm <span class="hero-name">Kevin</span><span class="accent">.</span
+        >
+      </h1>
+      <p class="typed-line" data-reveal>
+        <span class="sr-only">I {phrases.join(" I ")}</span>
+        <span aria-hidden="true">
+          I <span class="typed-text" data-typed={JSON.stringify(phrases)}
+            >{phrases[0]}</span
+          ><span class="typed-caret"></span>
+        </span>
+      </p>
 
-            <br />
-
-            <div class="projects-section">
-              <!-- Work Experience -->
-              <a href="/work-experience" class="projects-container">
-                <div class="single-projects-category">
-                  <div class="projects-category-image-container">
-                    <img
-                      src="/assets/icons/browser.svg"
-                      loading="lazy"
-                      alt=""
-                      class="projects-category-image"
-                    />
-                  </div>
-                </div>
-                <div class="single-projects-content">
-                  <h4>Work Experience</h4>
-                  <div class="tech-tools-container">
-                    <div class="mini-label-white gray-color">
-                      Technologies &amp; tools
-                    </div>
-                    <div class="chips-container chips-container-small-width">
-                      <div class="single-chip small-chip">Rust</div>
-                      <div class="single-chip small-chip">Python</div>
-                      <div class="single-chip small-chip">JavaScript</div>
-                      <div class="single-chip small-chip">TypeScript</div>
-                      <div class="single-chip small-chip">React</div>
-                      <div class="single-chip small-chip">MongoDB</div>
-                      <div class="single-chip small-chip">Pytest</div>
-                      <div class="single-chip small-chip">Podman</div>
-                      <div class="single-chip small-chip">Git</div>
-                    </div>
-                  </div>
-                </div>
-              </a>
-
-              <!-- Projects -->
-              <a href="/projects" class="projects-container">
-                <div class="single-projects-category">
-                  <div class="projects-category-image-container">
-                    <img
-                      src="/assets/icons/database.svg"
-                      loading="lazy"
-                      alt=""
-                      class="projects-category-image"
-                    />
-                  </div>
-                </div>
-                <div class="single-projects-content">
-                  <h4>Projects</h4>
-                  <div class="tech-tools-container">
-                    <h5>Academic & Personal</h5>
-
-                    <div class="mini-label-white gray-color mt-2">
-                      Technologies &amp; tools
-                    </div>
-                    <div class="chips-container chips-container-small-width">
-                      <div class="single-chip small-chip">Java</div>
-                      <div class="single-chip small-chip">Docker</div>
-                      <div class="single-chip small-chip">Postgres</div>
-                      <div class="single-chip small-chip">C#</div>
-                      <div class="single-chip small-chip">React</div>
-                      <div class="single-chip small-chip">Spring</div>
-                    </div>
-                  </div>
-                </div>
-              </a>
-
-              <!-- Photography -->
-              <a href="/photography" class="projects-container">
-                <div class="single-projects-category">
-                  <div class="projects-category-image-container">
-                    <img
-                      src="/assets/icons/database.svg"
-                      loading="lazy"
-                      alt=""
-                      class="projects-category-image"
-                    />
-                  </div>
-                </div>
-                <div class="single-projects-content">
-                  <h4>Photography</h4>
-                </div>
-              </a>
-            </div>
-          </main>
-        </div>
-      </nav>
-
-      <!--[if lte IE 9]><script src="//cdnjs.cloudflare.com/ajax/libs/placeholders/3.0.2/placeholders.min.js"></script><![endif]-->
+      <div class="button-row" data-reveal>
+        <a href={`mailto:${contact.email}`} class="button">
+          <img src="/assets/icons/at-solid.svg" alt="Email" />
+          {contact.email}
+        </a>
+        <a
+          href={contact.githubUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="button"
+        >
+          <img src="/assets/icons/github-octocat.svg" alt="GitHub" />
+          {contact.github}
+        </a>
+        <a href={contact.resume} target="_blank" class="button button-primary">
+          Resume &nearr;
+        </a>
+      </div>
     </div>
-  </body>
-</html>
+
+    <a
+      href="/photography"
+      class="photo-stack"
+      aria-label="Photography"
+      data-reveal
+    >
+      {
+        stack.map((photo) => (
+          <Image
+            src={photo}
+            alt=""
+            width={460}
+            height={580}
+            fit="cover"
+            loading="eager"
+            class="stack-photo"
+          />
+        ))
+      }
+    </a>
+  </section>
+
+  <!-- The list is repeated once so the strip can loop without a seam. -->
+  <div class="marquee" data-reveal>
+    <div class="marquee-track">
+      {
+        [false, true].map((isCopy) => (
+          <ul class="marquee-group" aria-hidden={isCopy ? "true" : undefined}>
+            {allTech.map((tech) => (
+              <li>{tech}</li>
+            ))}
+          </ul>
+        ))
+      }
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="section-heading" data-reveal>
+      <h2>Projects</h2>
+      <a href="/projects" class="section-link">
+        All projects <span aria-hidden="true">&rarr;</span>
+      </a>
+    </div>
+    <div class="bento">
+      {
+        projects.map((project, i) => (
+          <a
+            href={`/projects#${project.id}`}
+            class:list={["card", { "card-wide": i < WIDE_CARDS }]}
+            data-glow
+            data-reveal
+          >
+            <div class="card-top">
+              <span class="card-number">{String(i + 1).padStart(2, "0")}</span>
+              <span class="card-arrow" aria-hidden="true">
+                &nearr;
+              </span>
+            </div>
+            <h3>{project.data.title}</h3>
+            {i < WIDE_CARDS && <p>{project.data.desc[0]}</p>}
+            <div class="chips">
+              {project.data.tech.slice(0, 4).map((tech) => (
+                <span class="chip">{tech}</span>
+              ))}
+            </div>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-heading" data-reveal>
+      <h2>Photography</h2>
+      <a href="/photography" class="section-link">
+        All photos <span aria-hidden="true">&rarr;</span>
+      </a>
+    </div>
+    <a href="/photography" class="collage" data-reveal>
+      <div class="collage-cell">
+        <Image
+          src={grandfatherMntPeak}
+          alt=""
+          width={1300}
+          height={720}
+          fit="cover"
+        />
+        <div class="collage-caption">
+          <div class="mini-label">Shot on Canon EOS Rebel T7</div>
+          <div class="collage-title">Mountains, streets & travel</div>
+        </div>
+      </div>
+      <div class="collage-cell">
+        <Image src={hills} alt="" width={760} height={720} fit="cover" />
+      </div>
+    </a>
+  </section>
+</Layout>
+
+<script>
+  // Types and deletes the phrases under the greeting, one after another.
+  let stop: (() => void) | undefined;
+
+  document.addEventListener("astro:page-load", () => {
+    stop?.();
+    stop = undefined;
+
+    const el = document.querySelector<HTMLElement>("[data-typed]");
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      return;
+
+    const phrases: string[] = JSON.parse(el.dataset.typed ?? "[]");
+    if (phrases.length < 2) return;
+
+    let phrase = 0;
+    let length = phrases[0].length;
+    let deleting = true;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const tick = () => {
+      length += deleting ? -1 : 1;
+      el.textContent = phrases[phrase].slice(0, length);
+
+      let delay = deleting ? 24 : 52;
+      if (!deleting && length === phrases[phrase].length) {
+        deleting = true;
+        delay = 2200; // hold the finished phrase
+      } else if (deleting && length === 0) {
+        deleting = false;
+        phrase = (phrase + 1) % phrases.length;
+        delay = 350;
+      }
+      timer = setTimeout(tick, delay);
+    };
+
+    timer = setTimeout(tick, 2800);
+    stop = () => clearTimeout(timer);
+  });
+
+  document.addEventListener("astro:before-swap", () => stop?.());
+</script>

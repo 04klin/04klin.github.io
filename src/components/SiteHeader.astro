@@ -1,0 +1,40 @@
+---
+import { navItems, siteName, type NavKey } from "../site";
+
+interface Props {
+  current: NavKey;
+}
+
+const { current } = Astro.props;
+---
+
+<header class="site-header">
+  <nav class="site-nav" aria-label="Main">
+    <a href="/" class="brand" aria-label={`${siteName}, home`}>
+      <img
+        src="/assets/tokyo_pfp.png"
+        alt=""
+        width="32"
+        height="32"
+        class="brand-avatar"
+      />
+      <span class="brand-name">{siteName}</span>
+    </a>
+
+    <div class="nav-links">
+      {
+        navItems.map((item) => (
+          <a
+            href={item.href}
+            class:list={["nav-link", { "is-current": item.key === current }]}
+            aria-current={item.key === current ? "page" : undefined}
+          >
+            {/* Its own element so it can slide between links on navigation. */}
+            {item.key === current && <span class="nav-pill" />}
+            <span class="nav-label">{item.label}</span>
+          </a>
+        ))
+      }
+    </div>
+  </nav>
+</header>

@@ -1,298 +1,241 @@
 ---
-import Header from "../components/Header.astro";
-import Sidebar from "../components/Sidebar.astro";
-import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import { Image, getImage } from "astro:assets";
+import Layout from "../layouts/Layout.astro";
 
-const flickrPhotos = [
+import grandfatherMntPeak from "../assets/photography/grandfather_mnt_peak.jpg";
+import hills from "../assets/photography/hills.jpg";
+import marketplace from "../assets/photography/marketplace.jpg";
+import alleyway from "../assets/photography/alleyway.jpg";
+import mntFuji from "../assets/photography/mnt_fuji.jpg";
+
+// Originals in src/assets/photography are full camera resolution. Astro
+// generates the grid thumbnails and the lightbox version at build time.
+const LIGHTBOX_LONG_EDGE = 2400;
+
+async function lightboxSrc(image: ImageMetadata) {
+  const scale = Math.min(
+    1,
+    LIGHTBOX_LONG_EDGE / Math.max(image.width, image.height),
+  );
+  const full = await getImage({
+    src: image,
+    width: Math.round(image.width * scale),
+    format: "webp",
+  });
+  return full.src;
+}
+
+interface Post {
+  title: string;
+  /** "YYYY-MM", or just "YYYY". Posts are listed newest first. */
+  date: string;
+  text?: string;
+  /** One photo is shown large; several are shown as a grid. */
+  photos?: { image: ImageMetadata; alt: string }[];
+  /** Button to an external album. */
+  link?: { text: string; url: string };
+}
+
+// Add new posts anywhere in this list; they are sorted by date below.
+const allPosts: Post[] = [
   {
-    thumbnail: "/assets/photography/thumbnails/hills_thumbnail.jpeg",
-    src: "/assets/photography/hills.jpg",
-    alt: "Mt. Fuji with friends - Group",
+    title: "Japan 2026",
+    date: "2026",
+    link: {
+      text: "View the album on Google Photos ↗",
+      url: "https://photos.app.goo.gl/3JvDXtwURSKwfL9k6",
+    },
   },
   {
-    thumbnail: "/assets/photography/thumbnails/marketplace_thumbnail.jpeg",
-    src: "/assets/photography/marketplace.jpg",
-    alt: "Mt. Fuji with friends - Marketplace",
+    title: "Japan 2025",
+    date: "2025-12",
+    photos: [
+      { image: hills, alt: "Mt. Fuji with friends - Group" },
+      { image: marketplace, alt: "Mt. Fuji with friends - Marketplace" },
+      { image: alleyway, alt: "Mt. Fuji with friends - Alleyway" },
+      { image: mntFuji, alt: "Mt. Fuji with friends - Pic of Mount Fuji" },
+    ],
   },
   {
-    thumbnail: "/assets/photography/thumbnails/alleyway_thumbnail.jpeg",
-    src: "/assets/photography/alleyway.jpg",
-    alt: "Mt. Fuji with friends - Alleyway",
-  },
-  {
-    thumbnail: "/assets/photography/thumbnails/mnt_fuji_thumbnail.jpeg",
-    src: "/assets/photography/mnt_fuji.jpg",
-    alt: "Mt. Fuji with friends - Pic of Mount Fuji",
+    title: "Grandfather Mountain",
+    date: "2025-05",
+    photos: [{ image: grandfatherMntPeak, alt: "Grandfather Mountain" }],
   },
 ];
+
+function formatDate(date: string) {
+  const [year, month] = date.split("-");
+  if (!month) return year;
+  return new Date(Number(year), Number(month) - 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+const posts = await Promise.all(
+  allPosts
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map(async (post) => ({
+      ...post,
+      photos: await Promise.all(
+        (post.photos ?? []).map(async (photo) => ({
+          ...photo,
+          full: await lightboxSrc(photo.image),
+        })),
+      ),
+    })),
+);
 ---
 
-<!doctype html>
-<html>
-  <Header title="Photography | Kevin Lin" />
-  <body>
-    {/** Dialog for popup modal */}
-    <dialog id="lightbox" class="lightbox">
-      <div class="lightbox-content">
-        <button id="close-lightbox" class="close-btn" aria-label="Close modal"
-          >&times;</button
-        >
-        <div id="loading-spinner" class="spinner"></div>
+<Layout
+  current="photography"
+  heading="Photography"
+  lead="Shot on a Canon EOS Rebel T7."
+>
+  <dialog id="lightbox" class="lightbox" aria-label="Photo viewer">
+    <button
+      class="lightbox-button lightbox-close"
+      data-lightbox-close
+      aria-label="Close">&times;</button
+    >
+    <button
+      class="lightbox-button lightbox-prev"
+      data-lightbox-prev
+      aria-label="Previous photo">&larr;</button
+    >
+    <figure class="lightbox-figure" data-lightbox-figure>
+      <div class="spinner" data-lightbox-spinner></div>
+      <img data-lightbox-img alt="" hidden />
+      <figcaption data-lightbox-caption></figcaption>
+    </figure>
+    <button
+      class="lightbox-button lightbox-next"
+      data-lightbox-next
+      aria-label="Next photo">&rarr;</button
+    >
+  </dialog>
 
-        <img
-          id="lightbox-img"
-          src=""
-          alt="Enlarged view"
-          style="display: none;"
-        />
-      </div>
-    </dialog>
+  <div data-reveal>
+    <a
+      href="https://www.flickr.com/photos/04klin/"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="button"
+    >
+      View my full portfolio on Flickr ↗
+    </a>
+  </div>
 
-    <div class="content">
-      <Sidebar selectedItem="photography" />
-      <nav class="main">
-        <div class="container">
-          <div class="back-nav-container">
-            <a href="/" class="back-nav-button w-inline-block">
-              <img
-                src="/assets/icons/back.svg"
-                loading="lazy"
-                alt=""
-                class="back-nav-img"
-              />
-              <div>Back</div>
-            </a>
-          </div>
-          <div class="content-container">
-            <h1>Photography</h1>
+  {
+    posts.map((post) => (
+      <article class="photo-post" data-reveal>
+        <header class="photo-post-header">
+          <h2>{post.title}</h2>
+          <div class="mini-label">{formatDate(post.date)}</div>
+        </header>
+        {post.text && <p>{post.text}</p>}
 
-            <section class="items-container">
-              <div class="featured-photo">
+        {post.photos.length > 0 && (
+          <div
+            class:list={[
+              "photo-grid",
+              { "photo-grid-single": post.photos.length === 1 },
+            ]}
+          >
+            {post.photos.map((photo) => (
+              <button
+                type="button"
+                class="photo-button lightbox-trigger"
+                data-full={photo.full}
+                data-caption={photo.alt}
+                aria-label={`Enlarge photo: ${photo.alt}`}
+              >
                 <Image
-                  src="/assets/photography/thumbnails/grandfather_mnt_peak_thumbnail.jpeg"
-                  alt="Grandfather Mountain"
-                  width={1200}
-                  height={800}
-                  format="webp"
-                  class="featured-image lightbox-trigger"
-                  data-full="/assets/photography/grandfather_mnt_peak.jpg"
+                  src={photo.image}
+                  alt={photo.alt}
+                  width={post.photos.length === 1 ? 2000 : 1000}
                 />
-                <p>Grandfather Mountain (May 2025)</p>
-              </div>
-
-              <br />
-              <br />
-
-              {/** Link to Flikr */}
-              <div>
-                <a
-                  href="https://www.flickr.com/photos/04klin/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="button"
-                >
-                  View my full portfolio on Flickr ↗
-                </a>
-              </div>
-
-              <br />
-              <br />
-
-              <h3>Japan 2025</h3>
-
-              <div class="photo-grid">
-                {
-                  flickrPhotos.map((photo) => (
-                    <div class="photo-item">
-                      <Image
-                        src={photo.thumbnail}
-                        alt={photo.alt}
-                        height={800}
-                        width={800}
-                        format="webp"
-                        class="grid-image lightbox-trigger"
-                        data-full={photo.src}
-                      />
-                    </div>
-                  ))
-                }
-              </div>
-              <br />
-
-              <h3>Japan 2026</h3>
-              <p>incoming :)</p>
-            </section>
+              </button>
+            ))}
           </div>
-        </div>
-      </nav>
-    </div>
-  </body>
-</html>
+        )}
+
+        {post.link && (
+          <a
+            href={post.link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="button"
+          >
+            {post.link.text}
+          </a>
+        )}
+      </article>
+    ))
+  }
+</Layout>
 
 <script>
-  const lightbox = document.getElementById("lightbox");
-  const lightboxImg = document.getElementById("lightbox-img");
-  const closeBtn = document.getElementById("close-lightbox");
-  const spinner = document.getElementById("loading-spinner");
-  const triggerImages = document.querySelectorAll(".lightbox-trigger");
+  // Runs on every navigation to this page, including view transitions.
+  document.addEventListener("astro:page-load", () => {
+    const lightbox = document.querySelector<HTMLDialogElement>("#lightbox");
+    if (!lightbox) return;
 
-  // Open lightbox when an image is clicked
-  triggerImages.forEach((img) => {
-    img.addEventListener("click", (e) => {
-      const highResSrc = (e.target as HTMLImageElement).dataset.full;
+    const part = <T extends HTMLElement>(name: string) =>
+      lightbox.querySelector<T>(`[data-lightbox-${name}]`)!;
+    const image = part<HTMLImageElement>("img");
+    const figure = part("figure");
+    const caption = part("caption");
+    const spinner = part("spinner");
+    const prev = part("prev");
+    const next = part("next");
 
-      // 1. Show the spinner and hide the image tag
-      spinner.style.display = "block";
-      lightboxImg.style.display = "none";
+    const triggers = Array.from(
+      document.querySelectorAll<HTMLElement>(".lightbox-trigger"),
+    );
+    if (triggers.length === 0) return;
+    prev.hidden = next.hidden = triggers.length < 2;
 
-      // 2. Set the new source to start the download
-      lightboxImg.src = highResSrc;
+    let current = 0;
+    const show = (index: number) => {
+      current = (index + triggers.length) % triggers.length;
+      const trigger = triggers[current];
+      const text = trigger.dataset.caption ?? "";
 
-      // 3. Open the modal
-      lightbox.showModal();
+      // Show the spinner until the larger image has downloaded
+      spinner.hidden = false;
+      image.hidden = true;
+      image.alt = text;
+      image.src = trigger.dataset.full ?? "";
+      caption.textContent = `${text} · ${current + 1} / ${triggers.length}`;
+    };
+
+    image.addEventListener("load", () => {
+      spinner.hidden = true;
+      image.hidden = false;
     });
-  });
 
-  // When the new high-res image finishes downloading...
-  lightboxImg.addEventListener("load", () => {
-    // Hide the spinner and reveal the loaded image
-    spinner.style.display = "none";
-    lightboxImg.style.display = "block";
-  });
+    triggers.forEach((trigger, index) => {
+      trigger.addEventListener("click", () => {
+        show(index);
+        lightbox.showModal();
+      });
+    });
 
-  // Helper function to close and clear
-  function closeAndClearLightbox() {
-    lightbox.close();
-    // Clear the src so the old image doesn't flash the next time you open it
-    setTimeout(() => {
-      lightboxImg.src = "";
-    }, 200); // Slight delay ensures it clears AFTER the dialog disappears
-  }
+    prev.addEventListener("click", () => show(current - 1));
+    next.addEventListener("click", () => show(current + 1));
+    lightbox.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") show(current - 1);
+      if (e.key === "ArrowRight") show(current + 1);
+    });
 
-  // Close lightbox on 'X' button click
-  closeBtn.addEventListener("click", closeAndClearLightbox);
-
-  // Close lightbox when clicking outside the image
-  lightbox.addEventListener("click", (e) => {
-    if (e.target === lightbox) {
-      closeAndClearLightbox();
-    }
+    part("close").addEventListener("click", () => lightbox.close());
+    // Close when clicking outside the photo
+    lightbox.addEventListener("click", (e) => {
+      if (e.target === lightbox || e.target === figure) lightbox.close();
+    });
+    // Cleared so the old photo does not flash the next time it opens
+    lightbox.addEventListener("close", () => image.removeAttribute("src"));
   });
 </script>
-
-<style>
-  .spinner {
-    display: none; /* Hidden by default */
-    width: 40px;
-    height: 40px;
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 1s ease-in-out infinite;
-    position: absolute;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  /* Interactive class applied to ANY clickable photo */
-  .lightbox-trigger {
-    cursor: pointer;
-    transition: transform 0.2s ease-in-out;
-  }
-
-  .lightbox-trigger:hover {
-    transform: scale(1.02);
-  }
-
-  /* Full-width featured image styling */
-  .featured-image {
-    width: 100%;
-    height: auto; /* Keeps the aspect ratio intact */
-    border-radius: 8px;
-    object-fit: cover;
-  }
-
-  /* CSS Grid Layout */
-  .photo-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1rem;
-    margin-top: 1rem;
-  }
-
-  /* Image Styling within the grid */
-  .grid-image {
-    width: 100%;
-    /* Fixed height + object-fit ensures all grid boxes are uniformly sized 
-       even if your photos have different aspect ratios (portrait vs landscape) */
-    height: 300px;
-    object-fit: cover;
-    border-radius: 8px; /* Gives the images a nice modern, rounded edge */
-  }
-
-  /* Lightbox Background & Positioning */
-  .lightbox {
-    border: none;
-    border-radius: 8px;
-    padding: 0;
-    background: transparent;
-    max-width: 90vw;
-    max-height: 90vh;
-    overflow: visible;
-  }
-
-  /* The dark overlay behind the image */
-  .lightbox::backdrop {
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(
-      4px
-    ); /* Optional: adds a nice blur to the background */
-  }
-
-  /* Container for the image and close button */
-  .lightbox-content {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  /* The enlarged image */
-  #lightbox-img {
-    max-width: 100%;
-    max-height: 85vh;
-    object-fit: contain;
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  }
-
-  /* The close 'X' button */
-  .close-btn {
-    position: absolute;
-    top: -15px;
-    right: -15px;
-    background: white;
-    color: black;
-    border: none;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    font-size: 24px;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition: transform 0.2s;
-  }
-
-  .close-btn:hover {
-    transform: scale(1.1);
-  }
-</style>

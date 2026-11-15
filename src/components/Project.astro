@@ -1,37 +1,44 @@
 ---
-// Project.astro
-const { title, desc, links = [], tech } = Astro.props;
+import type { CollectionEntry } from "astro:content";
+
+type Props = CollectionEntry<"projects">["data"] & {
+  /** Anchor for links from the home page (`/projects#<id>`). */
+  id: string;
+};
+
+const { id, title, desc, links, tech } = Astro.props;
 ---
 
-<div class="single-item">
-  <h3>{title}</h3>
-
-  <div class="project-desc project-desc-list w-richtext">
-    <ul role="list">
-      {desc.map((item) => <li>{item}</li>)}
-    </ul>
+<article class="project" id={id} data-reveal>
+  <div class="project-aside">
+    <div class="project-number"></div>
+    <h2>{title}</h2>
   </div>
 
-  {
-    links.length > 0 && (
-      <>
-        <br />
-        <div
-          class="button-group"
-          style="display: flex; gap: 10px; flex-wrap: wrap;"
-        >
+  <div class="project-body">
+    <ul class="project-desc">
+      {desc.map((item) => <li>{item}</li>)}
+    </ul>
+
+    <div class="chips">
+      {tech.map((techItem) => <span class="chip">{techItem}</span>)}
+    </div>
+
+    {
+      links.length > 0 && (
+        <div class="button-row">
           {links.map((link) => (
-            <a href={link.url} class="button" target="_blank">
+            <a
+              href={link.url}
+              class="button"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               {link.text}
             </a>
           ))}
         </div>
-      </>
-    )
-  }
-
-  <div class="mini-label-white">Technologies &amp; tools</div>
-  <div class="chips-container">
-    {tech.map((techItem) => <div class="single-chip">{techItem}</div>)}
+      )
+    }
   </div>
-</div>
+</article>
