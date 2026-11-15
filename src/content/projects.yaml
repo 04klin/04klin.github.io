@@ -1,5 +1,37 @@
-- id: self-driving-cars
+- id: space-rover-mission
   order: 1
+  status: In progress
+  title: "Open Liberty Space Rover Mission"
+  desc:
+    - "IBM's open-source IoT game: players steer a physical rover across a game board with hand gestures, backed by Java microservices on Open Liberty"
+    - "Working on a free roam mode to add to the existing game modes; contributions in progress"
+  links:
+    - text: "View the repository →"
+      url: "https://github.com/OpenLiberty/space-rover-mission"
+  tech: [Java, Open Liberty, Jakarta EE, MicroProfile, React, OpenCV, Arduino]
+
+- id: openmt
+  order: 2
+  title: "OpenMT: A Self-Hosted Media Tracker"
+  desc:
+    - "Self-hosted, multi-user tracker for anime, manga, manhwa, TV, movies and books"
+    - "One search across AniList, TMDB, MangaUpdates and Open Library, with result ranking and duplicate detection"
+    - "Discovery page with trending and upcoming shelves, cached per list and refreshed daily"
+    - "Optimistic updates with undo, multiple themes, and scripted deploys with backups and rollback"
+  tech: [Next.js, React, TypeScript, SQLite, Drizzle, TanStack Query, Tailwind]
+
+- id: quote-bot
+  order: 3
+  title: "Discord Quote Bot & Quotehoot"
+  desc:
+    - "Discord bot that turns a server's quote channels into a reviewed, searchable quote catalog"
+    - "Who Said?: guess which member said a random quote, with weekly and all-time leaderboards"
+    - 'Quotehoot: a live, Kahoot-style "who said it?" quiz played on phones over WebSockets'
+    - "Posts a Quote of the Day and a weekly champion on a schedule; quotes are approved in a local moderation dashboard first"
+  tech: [Node.js, TypeScript, Express, SQLite, WebSockets, Podman]
+
+- id: self-driving-cars
+  order: 4
   title: Self Driving Cars
   desc:
     - "Implemented lane following using a color mask, blob detection, and CTE calculations"
@@ -10,7 +42,7 @@
   tech: [Python, YOLO, ROS2, CV2]
 
 - id: repo-replay
-  order: 2
+  order: 5
   title: "Repo Replay: A GitHub Commit History Replay Tool"
   desc:
     - "Problem: Teaching staff spends lots of time navigating code to understand what students have tried on their assignments"
@@ -27,7 +59,7 @@
   tech: [React, TypeScript, Spring, Java, PostgreSQL, Docker, Tailwind]
 
 - id: bfs-paper
-  order: 3
+  order: 6
   title: "University: Final Paper on BFS Algorithms"
   desc:
     - "Performance analysis of BFS algorithms"
@@ -40,7 +72,7 @@
   tech: [OpenMP, C++, Shell]
 
 - id: liquid-rocketry-mission-control
-  order: 4
+  order: 7
   title: "Liquid Rocketry Lab: Mission Control"
   desc:
     - "Led a team of 4 to maintain and develop new features for the mission control platform"
@@ -53,7 +85,7 @@
   tech: [React, Flask, Docker, MongoDB]
 
 - id: breaking-legs
-  order: 5
+  order: 8
   title: "Game Jam: Breaking Legs"
   desc:
     - "Co-built a 2d platform game in the endless run genre"
