@@ -17,6 +17,8 @@ npx astro check      # type check only
 npx prettier --write src   # format (prettier-plugin-astro handles .astro files)
 ```
 
+`npm run dev` and `npm run build` first run `scripts/sync-resume.mjs`, which copies `../resume/resume.pdf` (a sibling repository on the author's machine) over `public/assets/resume.pdf` when it has changed. The copy still has to be committed to be deployed; in CI the sibling does not exist and the script does nothing.
+
 There are no tests and no lint script. `npm run build` is the correctness check: it fails on type errors, on content that does not match its schema, and on missing imported images.
 
 ## Deployment

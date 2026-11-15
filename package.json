@@ -3,8 +3,11 @@
   "type": "module",
   "version": "1.0.0",
   "scripts": {
+    "sync-resume": "node scripts/sync-resume.mjs",
+    "predev": "npm run sync-resume",
     "dev": "astro dev",
     "start": "astro dev",
+    "prebuild": "npm run sync-resume",
     "build": "astro check && astro build",
     "preview": "astro preview",
     "astro": "astro"

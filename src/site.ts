@@ -4,7 +4,7 @@ export const contact = {
   email: "2004klin@gmail.com",
   github: "04klin",
   githubUrl: "https://github.com/04klin",
-  resume: "/assets/kevin_lin_resume_2026.pdf",
+  resume: "/assets/resume.pdf",
 } as const;
 
 /** Top bar links, in display order. Add a page here to put it in the nav. */
