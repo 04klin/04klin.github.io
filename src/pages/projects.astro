@@ -12,6 +12,7 @@ const projects = (await getCollection("projects")).sort(
   current="projects"
   heading="Projects"
   lead="Coursework, club work and side projects."
+  description="Projects by Kevin Lin: open source, self-hosted apps, Discord bots, robotics and more."
 >
   <section class="project-list">
     {projects.map((project) => <Project id={project.id} {...project.data} />)}

@@ -27,7 +27,9 @@ Every push to `main` triggers `.github/workflows/deploy.yml`, which runs the bui
 
 The site separates content, structure and styling so that each can change alone (a theme change should touch only the layout, components and CSS).
 
-**Layout.** Every page wraps its content in `src/layouts/Layout.astro`, which owns the `<head>`, the fixed backdrop, the top bar (`SiteHeader.astro`), the `<main class="page">` column and the footer (`SiteFooter.astro`). Props, all optional: `current` (which nav link to highlight; omitted on `404.astro`), `heading` and `lead`. With `heading`, the layout renders the `<h1>`, the `lead` line under it and a `"<heading> | Kevin Lin"` title; without it (home page only) the slot is rendered bare.
+**Layout.** Every page wraps its content in `src/layouts/Layout.astro`, which owns the `<head>`, the fixed backdrop, the top bar (`SiteHeader.astro`), the `<main class="page">` column and the footer (`SiteFooter.astro`). Props, all optional: `current` (which nav link to highlight; omitted on `404.astro`), `heading`, `lead` and `description` (search and link-preview summary). With `heading`, the layout renders the `<h1>`, the `lead` line under it and a `"<heading> | Kevin Lin"` title; without it (home page only) the slot is rendered bare.
+
+**Link previews.** The layout emits Open Graph and Twitter card tags so shared links unfurl (Discord, iMessage, LinkedIn). They need absolute URLs, built from `site` in `astro.config.mjs`. Every page shares one picture, `public/assets/og-image.png` (1200x630), rendered from `scripts/og-image.html` by `scripts/make-og-image.sh` (headless Firefox); edit the HTML and rerun the script rather than editing the PNG. `theme-color` is the accent green because Discord uses it for the embed's side bar. Platforms cache previews, so changes can take a while to show.
 
 **404.** `src/pages/404.astro` builds `404.html`, which GitHub Pages serves for unknown paths.
 
