@@ -1,5 +1,6 @@
 ---
 import { ClientRouter } from "astro:transitions";
+import Backdrop from "../components/Backdrop.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 import { siteName, type NavKey } from "../site";
@@ -58,6 +59,71 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={previewImage} />
     <meta name="theme-color" content="#a3d977" />
+    <!--
+      Sets the background scene (day or night, season, landscape) before the
+      first paint so the page never flashes the wrong one. A view transition
+      swap replaces the <html> attributes, so they are set again after each
+      swap. See scripts/scene.ts.
+    -->
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        // Northern hemisphere seasons, indexed by month.
+        const byMonth = [
+          "winter",
+          "winter",
+          "spring",
+          "spring",
+          "spring",
+          "summer",
+          "summer",
+          "summer",
+          "autumn",
+          "autumn",
+          "autumn",
+          "winter",
+        ];
+        const scenes = ["mountains", "river", "lake", "hills"];
+        const read = (storage, key) => {
+          try {
+            return storage.getItem(key);
+          } catch {
+            return null;
+          }
+        };
+        // A new landscape on every page load (including reloads). It is kept
+        // in memory, so it stays the same while the visitor clicks between
+        // pages, which swap the page without reloading it.
+        window.__scene ??=
+          scenes[Math.floor(Math.random() * scenes.length)];
+
+        const apply = () => {
+          const now = new Date();
+
+          // The visitor's own clock: day from 7am to 7pm, unless they chose
+          // with the button during this visit.
+          const theme = read(sessionStorage, "theme");
+          const hour = now.getHours();
+          root.dataset.theme = ["day", "night"].includes(theme)
+            ? theme
+            : hour >= 7 && hour < 19
+              ? "day"
+              : "night";
+
+          const season = read(sessionStorage, "season");
+          root.dataset.season = byMonth.includes(season)
+            ? season
+            : byMonth[now.getMonth()];
+
+          root.dataset.scene = window.__scene;
+        };
+        apply();
+        if (!window.__sceneOnSwap) {
+          window.__sceneOnSwap = true;
+          document.addEventListener("astro:after-swap", apply);
+        }
+      })();
+    </script>
     <ClientRouter />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -79,16 +145,16 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
           opacity: 1 !important;
           transform: none !important;
         }
+        /* The season and day/night buttons need JS too. */
+        .header-controls {
+          display: none !important;
+        }
       </style>
     </noscript>
   </head>
   <body>
-    <!-- Kept across navigations so the aurora does not restart. -->
-    <div class="backdrop" aria-hidden="true" transition:persist="backdrop">
-      <div class="aurora aurora-a"></div>
-      <div class="aurora aurora-b"></div>
-      <div class="backdrop-grid"></div>
-    </div>
+    <!-- Kept across navigations so its animations do not restart. -->
+    <Backdrop />
     <div class="scroll-progress" aria-hidden="true"></div>
 
     <SiteHeader current={current} />
@@ -117,6 +183,9 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
         setupReveal,
         setupSpotlight,
       } from "../scripts/motion";
+      import { setupSceneControls } from "../scripts/scene";
+
+      setupSceneControls();
 
       let cleanups: (() => void)[] = [];
       const cleanup = () => {

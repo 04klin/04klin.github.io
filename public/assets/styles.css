@@ -23,10 +23,40 @@
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
+  --accent-hover: #b9e695;
+  --nav-bg: rgba(18, 19, 18, 0.72);
+  --nav-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  --nav-pill: rgba(255, 255, 255, 0.1);
+
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --radius: 16px;
   --page-width: 1000px;
   --page-gutter: 24px;
+}
+
+/* Day theme, chosen with the switch in the top bar (theme.ts). Night, above,
+   is the default. */
+:root[data-theme="day"] {
+  color-scheme: light;
+
+  --bg: #eef3ec;
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-hover: rgba(255, 255, 255, 0.75);
+  --border: rgba(24, 48, 34, 0.12);
+  --border-strong: rgba(24, 48, 34, 0.24);
+  --text: #14201a;
+  --muted: #38463e;
+  --faint: #5a675f;
+
+  --accent: #3c7a28;
+  --accent-rgb: 60, 122, 40;
+  --accent-2: #1d7f74;
+  --accent-2-rgb: 29, 127, 116;
+
+  --accent-hover: #4a8f33;
+  --nav-bg: rgba(255, 255, 255, 0.72);
+  --nav-shadow: 0 10px 40px rgba(30, 60, 45, 0.15);
+  --nav-pill: rgba(24, 48, 34, 0.08);
 }
 
 /* ---------------------------------------------------------------------------
@@ -129,77 +159,463 @@ p {
 }
 
 /* ---------------------------------------------------------------------------
-   Backdrop: grid, aurora and a glow that follows the cursor (motion.ts)
+   Backdrop (Backdrop.astro): one of four landscapes, picked per visit, in the
+   colours of the season, by day or by night (all set on <html> by the
+   layout's inline script), and a glow that follows the cursor (motion.ts).
    --------------------------------------------------------------------------- */
 
+/* Each season's daytime colours: hazy and light, so dark text stays readable
+   over them. Summer is also the fallback without JavaScript. */
+.backdrop,
+[data-season="summer"] .backdrop {
+  --sky-top: #9ecae3;
+  --sky-mid: #c8e0e8;
+  --sky-bottom: #e8f0e4;
+  --far-day: #c9dad6;
+  --mid-day: #afcab7;
+  --ground-day: #9cbea5;
+  --pine-day: #8fb398;
+  --leaf-day: #a6c897;
+  --water-day: #b3d3e0;
+  --snow-day: #f4f8f9;
+}
+
+/* Fresh greens and pink blossom. */
+[data-season="spring"] .backdrop {
+  --sky-top: #a6d2ec;
+  --sky-mid: #d5ebf1;
+  --sky-bottom: #eef5e8;
+  --far-day: #cfdfdc;
+  --mid-day: #b6d8ac;
+  --ground-day: #a7d09c;
+  --pine-day: #95bb9c;
+  --leaf-day: #efd0d9;
+  --water-day: #b9dcec;
+}
+
+/* Golden hills and orange trees under a warmer sky. */
+[data-season="autumn"] .backdrop {
+  --sky-top: #b4cddb;
+  --sky-mid: #e4dccb;
+  --sky-bottom: #f2e7d3;
+  --far-day: #d5d8cf;
+  --mid-day: #dcc9a0;
+  --ground-day: #cdb88e;
+  --pine-day: #9fb5a0;
+  --leaf-day: #e8b083;
+  --water-day: #bed3da;
+}
+
+/* Snow on the ground, bare trees, ice on the water. */
+[data-season="winter"] .backdrop {
+  --sky-top: #c4d5e1;
+  --sky-mid: #dee7ec;
+  --sky-bottom: #eef2f4;
+  --far-day: #d6e0e5;
+  --mid-day: #e2e9ed;
+  --ground-day: #edf2f4;
+  --pine-day: #9fb4ae;
+  --leaf-day: #c9c4be;
+  --water-day: #c9dde8;
+  --snow-day: #f8fbfc;
+}
+
+/* Night: the same colours, mostly sunk into the dark, nearer layers more. */
 .backdrop {
+  --night: #080d0b;
+  --far: color-mix(in srgb, var(--far-day) 10%, var(--night));
+  --mid: color-mix(in srgb, var(--mid-day) 7%, var(--night));
+  --ground: color-mix(in srgb, var(--ground-day) 4%, var(--night));
+  --pine: color-mix(in srgb, var(--pine-day) 4%, var(--night));
+  --leaf: color-mix(in srgb, var(--leaf-day) 9%, var(--night));
+  --water: color-mix(in srgb, var(--water-day) 12%, var(--night));
+  --snow: color-mix(in srgb, var(--snow-day) 22%, var(--night));
+  --mist: 200, 222, 210;
+  --mist-strength: 0.07;
+
   z-index: -1;
   pointer-events: none;
+  /* Night sky, lightening slightly towards the horizon. */
   background-color: var(--bg);
+  background-image: linear-gradient(
+    180deg,
+    #0a0f0d 0%,
+    #0f1714 55%,
+    #18241f 100%
+  );
   position: fixed;
   inset: 0;
   overflow: hidden;
+}
+
+/* Snow catches the moonlight. */
+[data-season="winter"]:not([data-theme="day"]) .backdrop {
+  --far: color-mix(in srgb, var(--far-day) 12%, var(--night));
+  --snow: color-mix(in srgb, var(--snow-day) 15%, var(--night));
+  --mid: color-mix(in srgb, var(--mid-day) 12%, var(--night));
+  --ground: color-mix(in srgb, var(--ground-day) 12%, var(--night));
+}
+
+[data-theme="day"] .backdrop {
+  --far: var(--far-day);
+  --mid: var(--mid-day);
+  --ground: var(--ground-day);
+  --pine: var(--pine-day);
+  --leaf: var(--leaf-day);
+  --water: var(--water-day);
+  --snow: var(--snow-day);
+  --mist: 255, 255, 255;
+  --mist-strength: 0.45;
+}
+
+.sky-day {
+  opacity: 0;
+  background-image: linear-gradient(
+    180deg,
+    var(--sky-top) 0%,
+    var(--sky-mid) 45%,
+    var(--sky-bottom) 100%
+  );
+  position: absolute;
+  inset: 0;
 }
 
 .backdrop::after {
   content: "";
   background-image: radial-gradient(
     520px circle at var(--spot-x, 50%) var(--spot-y, 30%),
-    rgba(var(--accent-rgb), 0.07),
+    rgba(var(--accent-rgb), 0.06),
     rgba(var(--accent-rgb), 0) 70%
   );
   position: absolute;
   inset: 0;
 }
 
-.backdrop-grid {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 48px 48px;
-  background-position: center top;
+/* The moon and the sun share a spot in the sky. */
+.moon,
+.sun {
+  border-radius: 50%;
   position: absolute;
-  inset: 0;
-  -webkit-mask-image: radial-gradient(
-    ellipse 85% 65% at 50% 0%,
-    #000 15%,
-    transparent 75%
-  );
-  mask-image: radial-gradient(
-    ellipse 85% 65% at 50% 0%,
-    #000 15%,
-    transparent 75%
-  );
+  top: 16vh;
+  right: 14vw;
 }
 
-.aurora {
+/* A low moon with a wide, faint halo. */
+.moon {
+  width: 34px;
+  height: 34px;
+  background-image: radial-gradient(circle at 40% 38%, #f4efdc, #d9d2b8 70%);
+  opacity: 0.4;
+  box-shadow:
+    0 0 30px 6px rgba(239, 233, 212, 0.14),
+    0 0 260px 110px rgba(239, 233, 212, 0.045);
+}
+
+.sun {
+  width: 52px;
+  height: 52px;
+  background-color: #fff8e0;
+  opacity: 0;
+  box-shadow:
+    0 0 40px 16px rgba(255, 244, 205, 0.8),
+    0 0 300px 140px rgba(255, 240, 200, 0.45);
+}
+
+.stars span {
+  width: 2px;
+  height: 2px;
   border-radius: 50%;
+  background-color: #e9efe6;
+  position: absolute;
+}
+
+.clouds {
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+}
+
+.clouds span {
+  border-radius: 50%;
+  background-image: radial-gradient(
+    closest-side,
+    rgba(255, 255, 255, 0.85),
+    rgba(255, 255, 255, 0)
+  );
   position: absolute;
   will-change: transform;
 }
 
-.aurora-a {
-  width: 70vw;
-  height: 60vh;
-  background-image: radial-gradient(
-    closest-side,
-    rgba(var(--accent-rgb), 0.2),
-    rgba(var(--accent-rgb), 0)
-  );
-  top: -30vh;
-  left: -15vw;
+/* Only the chosen landscape is shown; mountains without JavaScript. */
+.landscape {
+  width: 100%;
+  height: 48vh;
+  min-height: 260px;
+  display: none;
+  position: absolute;
+  bottom: 0;
+  left: 0;
 }
 
-.aurora-b {
-  width: 65vw;
-  height: 55vh;
+:root:not([data-scene]) .landscape-mountains,
+[data-scene="mountains"] .landscape-mountains,
+[data-scene="river"] .landscape-river,
+[data-scene="lake"] .landscape-lake,
+[data-scene="hills"] .landscape-hills {
+  display: block;
+}
+
+.landscape .far {
+  fill: var(--far);
+}
+
+.landscape .mid {
+  fill: var(--mid);
+}
+
+.landscape .ground {
+  fill: var(--ground);
+}
+
+.landscape .pine {
+  fill: var(--pine);
+}
+
+.landscape .leaf {
+  fill: var(--leaf);
+}
+
+.landscape .water {
+  fill: var(--water);
+}
+
+.landscape .reflection {
+  opacity: 0.35;
+}
+
+/* Moonlight, or sunlight, on the water. */
+.landscape .glint {
+  fill: none;
+  stroke: #f4efdc;
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.2;
+}
+
+[data-theme="day"] .landscape .glint {
+  stroke: #fff;
+  opacity: 0.7;
+}
+
+.landscape .snowcap {
+  fill: var(--snow);
+  display: none;
+}
+
+[data-season="winter"] .landscape .snowcap {
+  display: inline;
+}
+
+/* Soft bands of fog, one behind the hills and one in front of them. */
+.mist {
+  width: 140vw;
+  height: 22vh;
+  border-radius: 50%;
   background-image: radial-gradient(
     closest-side,
-    rgba(var(--accent-2-rgb), 0.17),
-    rgba(var(--accent-2-rgb), 0)
+    rgba(var(--mist), var(--mist-strength)),
+    rgba(var(--mist), 0)
   );
-  top: -26vh;
-  right: -18vw;
+  position: absolute;
+  left: -20vw;
+  will-change: transform;
+}
+
+.mist-a {
+  bottom: 22vh;
+}
+
+.mist-b {
+  height: 16vh;
+  bottom: 2vh;
+  opacity: 0.8;
+}
+
+/* Fireflies come out on summer nights. */
+.fireflies {
+  display: none;
+}
+
+[data-season="summer"]:not([data-theme="day"]) .fireflies {
+  display: block;
+}
+
+.fireflies span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background-color: #e4ef9a;
+  box-shadow: 0 0 8px 2px rgba(228, 239, 154, 0.5);
+  opacity: 0.35;
+  position: absolute;
+}
+
+/* Petals in spring, leaves in autumn, snow in winter. They fall only when
+   motion is allowed (see the animation section at the end). */
+.falling {
+  display: none;
+  position: absolute;
+  inset: 0;
+}
+
+.falling span {
+  scale: var(--size);
+  position: absolute;
+  top: 0;
+}
+
+.petals span {
+  width: 7px;
+  height: 5px;
+  border-radius: 60% 0;
+  background-color: #f3c4d2;
+  opacity: 0.85;
+}
+
+.leaves span {
+  width: 10px;
+  height: 7px;
+  border-radius: 0 80%;
+  background-color: #dc8a48;
+  opacity: 0.85;
+}
+
+.leaves span:nth-child(3n) {
+  background-color: #e6b24e;
+}
+
+.leaves span:nth-child(4n) {
+  background-color: #c4552f;
+}
+
+.snow span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #fff;
+  opacity: 0.8;
+}
+
+:root:not([data-theme="day"]) .petals span,
+:root:not([data-theme="day"]) .leaves span {
+  opacity: 0.4;
+}
+
+:root:not([data-theme="day"]) .snow span {
+  opacity: 0.55;
+}
+
+/* By day: sky, sun and clouds come out; moon and stars go. */
+[data-theme="day"] .sky-day,
+[data-theme="day"] .sun,
+[data-theme="day"] .clouds {
+  opacity: 1;
+}
+
+[data-theme="day"] .moon,
+[data-theme="day"] .stars {
+  visibility: hidden;
+}
+
+/* The season and day/night buttons, at the right end of the top bar. */
+.header-controls {
+  pointer-events: auto;
+  gap: 8px;
+  display: flex;
+  position: absolute;
+  top: 0;
+  right: 16px;
+}
+
+.icon-button {
+  /* As tall as the top bar. */
+  width: 46px;
+  height: 46px;
+  color: var(--text);
+  background-color: var(--nav-bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  box-shadow: var(--nav-shadow);
+  cursor: pointer;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  transition:
+    border-color 0.2s ease,
+    transform 0.5s var(--ease-out);
+}
+
+.icon-button:hover {
+  border-color: var(--accent);
+  transform: rotate(-15deg);
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.icon-button svg {
+  width: 20px;
+  height: 20px;
+  display: none;
+}
+
+/* The day/night button shows what a click switches to: the sun at night,
+   the moon by day. The season button shows the current season. */
+.theme-toggle .icon-sun,
+[data-theme="day"] .theme-toggle .icon-moon,
+:root:not([data-season]) .season-toggle .icon-summer,
+[data-season="spring"] .season-toggle .icon-spring,
+[data-season="summer"] .season-toggle .icon-summer,
+[data-season="autumn"] .season-toggle .icon-autumn,
+[data-season="winter"] .season-toggle .icon-winter {
+  display: block;
+}
+
+[data-theme="day"] .theme-toggle .icon-sun {
+  display: none;
+}
+
+/* While the theme or season switches (scene.ts), the whole page is one
+   snapshot, and the change is revealed in a growing circle instead of a
+   crossfade. */
+.theme-switching .site-header,
+.theme-switching .nav-pill {
+  view-transition-name: none;
+}
+
+.theme-switching::view-transition-old(root),
+.theme-switching::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: none;
+}
+
+/* The circle grows from the button that was pressed; scene.ts sets
+   --reveal-x, --reveal-y and --reveal-r. */
+.theme-switching::view-transition-new(root) {
+  animation: scene-reveal 0.7s var(--ease-out);
+}
+
+@keyframes scene-reveal {
+  from {
+    clip-path: circle(0 at var(--reveal-x) var(--reveal-y));
+  }
+  to {
+    clip-path: circle(var(--reveal-r) at var(--reveal-x) var(--reveal-y));
+  }
 }
 
 /* Reading progress along the top edge, where the browser supports it. */
@@ -234,14 +650,14 @@ p {
 
 .site-nav {
   pointer-events: auto;
-  background-color: rgba(18, 19, 18, 0.72);
+  background-color: var(--nav-bg);
   border: 1px solid var(--border);
   border-radius: 999px;
   align-items: center;
   gap: 20px;
   padding: 6px;
   display: flex;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--nav-shadow);
   -webkit-backdrop-filter: blur(16px) saturate(150%);
   backdrop-filter: blur(16px) saturate(150%);
 }
@@ -298,7 +714,7 @@ p {
 
 .nav-pill {
   view-transition-name: nav-current;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--nav-pill);
   border-radius: 999px;
   position: absolute;
   inset: 0;
@@ -422,6 +838,11 @@ p {
   transition: opacity 0.2s ease;
 }
 
+/* The icons are white SVG files; darken them on the light day theme. */
+[data-theme="day"] .button img {
+  filter: invert(1);
+}
+
 .button:hover {
   background-color: var(--surface-hover);
   border-color: var(--accent);
@@ -444,7 +865,7 @@ p {
 }
 
 .button-primary:hover {
-  background-color: #b9e695;
+  background-color: var(--accent-hover);
   box-shadow: 0 8px 28px rgba(var(--accent-rgb), 0.28);
 }
 
@@ -456,7 +877,7 @@ p {
 
 .chip {
   color: var(--text);
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: var(--surface-hover);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px 10px;
@@ -1152,6 +1573,12 @@ p {
     gap: 6px;
   }
 
+  .header-controls {
+    flex: none;
+    margin-left: 8px;
+    position: static;
+  }
+
   .brand-name {
     display: none;
   }
@@ -1234,6 +1661,20 @@ p {
   }
 }
 
+@media (max-width: 480px) {
+  .header-controls {
+    margin-left: 0;
+    position: absolute;
+    top: 54px;
+    right: 12px;
+  }
+
+  .icon-button {
+    width: 40px;
+    height: 40px;
+  }
+}
+
 /* ---------------------------------------------------------------------------
    Animation. Everything here is skipped for visitors who ask their system
    for reduced motion.
@@ -1280,12 +1721,32 @@ p {
     transform: translateY(0);
   }
 
-  .aurora-a {
-    animation: drift-a 24s ease-in-out infinite alternate;
+  .mist-a {
+    animation: mist-a 40s ease-in-out infinite alternate;
   }
 
-  .aurora-b {
-    animation: drift-b 30s ease-in-out infinite alternate;
+  .mist-b {
+    animation: mist-b 55s ease-in-out infinite alternate;
+  }
+
+  .clouds span {
+    animation: cloud 70s ease-in-out infinite alternate;
+  }
+
+  .fireflies span {
+    opacity: 0;
+    animation: firefly 8s ease-in-out infinite;
+  }
+
+  [data-season="spring"] .petals,
+  [data-season="autumn"] .leaves,
+  [data-season="winter"] .snow {
+    display: block;
+  }
+
+  /* Durations and delays are set on each one in Backdrop.astro. */
+  .falling span {
+    animation: fall 16s linear infinite;
   }
 
   .hero-name,
@@ -1325,15 +1786,50 @@ p {
   }
 }
 
-@keyframes drift-a {
+@keyframes mist-a {
   to {
-    transform: translate(22vw, 8vh) scale(1.15);
+    transform: translateX(18vw);
   }
 }
 
-@keyframes drift-b {
+@keyframes mist-b {
   to {
-    transform: translate(-24vw, 10vh) scale(0.9);
+    transform: translateX(-16vw);
+  }
+}
+
+@keyframes cloud {
+  to {
+    transform: translateX(10vw);
+  }
+}
+
+/* Drifts sideways and spins on the way down (--drift and --spin are set on
+   each one in Backdrop.astro). */
+@keyframes fall {
+  from {
+    transform: translate(0, -5vh) rotate(0deg);
+  }
+  to {
+    transform: translate(var(--drift), 105vh) rotate(var(--spin));
+  }
+}
+
+/* Fireflies wander a little and glow on and off. */
+@keyframes firefly {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(14px, -22px);
+  }
+  70% {
+    opacity: 0.6;
   }
 }
 
