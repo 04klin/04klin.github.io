@@ -1328,14 +1328,102 @@ p {
   margin-bottom: 20px;
 }
 
+/* Several photos sit in one row that scrolls sideways. Each is a bit under
+   half the width, so the next one peeks in and shows there is more. */
 .photo-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: 42%;
   gap: 16px;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), 0.45) transparent;
+  /* Room for the hover lift above and the scrollbar below. */
+  padding: 6px 0 14px;
   display: grid;
+  overflow-x: auto;
+}
+
+.photo-grid > .photo-button {
+  scroll-snap-align: start;
+}
+
+/* Two photos fit side by side, so there is nothing to scroll. */
+.photo-grid-pair {
+  grid-auto-columns: calc(50% - 8px);
 }
 
 .photo-grid-single {
-  grid-template-columns: minmax(0, 1fr);
+  grid-auto-columns: 100%;
+  padding: 0;
+  overflow: visible;
+}
+
+/* Arrows over the ends of a scrolling row, shown when hovering the row.
+   Touch screens swipe instead, so they never show there. */
+.photo-scroller {
+  position: relative;
+}
+
+.photo-scroll-button {
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  color: var(--text);
+  cursor: pointer;
+  background-color: var(--nav-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  font-size: 1.25rem;
+  line-height: 1;
+  display: flex;
+  position: absolute;
+  /* Centred on the photos, above the room left for the scrollbar. */
+  top: calc(50% - 26px);
+  opacity: 0;
+  box-shadow: var(--nav-shadow);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition:
+    opacity 0.25s ease,
+    border-color 0.3s ease,
+    transform 0.3s var(--ease-out);
+}
+
+.photo-scroll-prev {
+  left: 12px;
+}
+
+.photo-scroll-next {
+  right: 12px;
+}
+
+.photo-scroll-button[hidden] {
+  display: none;
+}
+
+.photo-scroller:hover .photo-scroll-button,
+.photo-scroll-button:focus-visible {
+  opacity: 1;
+}
+
+.photo-scroller .photo-scroll-button:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.photo-scroll-button:hover {
+  border-color: var(--accent);
+  transform: scale(1.1);
+}
+
+@media (hover: none) {
+  .photo-scroll-button {
+    display: none;
+  }
 }
 
 .photo-button {
@@ -1630,8 +1718,13 @@ p {
     margin-top: 64px;
   }
 
-  .photo-grid {
-    grid-template-columns: minmax(0, 1fr);
+  .photo-grid,
+  .photo-grid-pair {
+    grid-auto-columns: 85%;
+  }
+
+  .photo-grid-single {
+    grid-auto-columns: 100%;
   }
 
   .lightbox-figure {
