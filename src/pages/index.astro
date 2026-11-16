@@ -12,17 +12,15 @@ import mntFuji from "../assets/photography/mnt_fuji.jpg";
 // Rotating endings for "I ..." under the greeting. The first one is what
 // shows without JavaScript or with reduced motion.
 const phrases = [
-  "love Claude Code.",
   "love my work, and my work loves me.",
   "can't wait to see my coworkers.",
-  "have no emotions, no feelings, only work.",
   "am ready to go to work.",
   "belong to my work.",
   "enjoy my work.",
   "am ready for Monday.",
   "used my weekend to prepare for Monday.",
   "will do my best.",
-  "can.",
+  "love Claude Code.",
   "miss my work.",
 ];
 
@@ -32,6 +30,8 @@ const projects = (await getCollection("projects")).sort(
 
 // The first projects (by `order`) get a wide card with a line of description.
 const WIDE_CARDS = 2;
+// Two rows: the wide pair, then three small cards. The rest are on /projects.
+const HOME_CARDS = 5;
 
 // Every technology used across the projects, for the scrolling strip.
 const allTech = [...new Set(projects.flatMap((project) => project.data.tech))];
@@ -122,22 +122,21 @@ const stack = [marketplace, alleyway, mntFuji];
     </div>
     <div class="bento">
       {
-        projects.map((project, i) => (
+        projects.slice(0, HOME_CARDS).map((project, i) => (
           <a
             href={`/projects#${project.id}`}
             class:list={["card", { "card-wide": i < WIDE_CARDS }]}
             data-glow
             data-reveal
           >
-            <div class="card-top">
-              <span class="card-number">{String(i + 1).padStart(2, "0")}</span>
-              {project.data.status && (
+            <span class="card-arrow" aria-hidden="true">
+              &nearr;
+            </span>
+            {project.data.status && (
+              <div class="card-top">
                 <span class="status-badge">{project.data.status}</span>
-              )}
-              <span class="card-arrow" aria-hidden="true">
-                &nearr;
-              </span>
-            </div>
+              </div>
+            )}
             <h3>{project.data.title}</h3>
             {i < WIDE_CARDS && <p>{project.data.desc[0]}</p>}
             <div class="chips">

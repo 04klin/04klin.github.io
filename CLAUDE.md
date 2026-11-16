@@ -39,7 +39,7 @@ The site separates content, structure and styling so that each can change alone 
 
 **Adding a page:** create `src/pages/<name>.astro` using `<Layout current="..." heading="...">`, add an entry to `navItems`, and optionally add a section for it to the home page in `index.astro`.
 
-**Home page.** `index.astro` is generated from content where it can be: the project cards and the scrolling technology strip come from the projects collection (the first `WIDE_CARDS` projects get a wide card showing their first `desc` line; every card links to `/projects#<id>`). The typed line cycles through `phrases`, and the photo pile (`stack`) and the photography collage use hand-picked imports.
+**Home page.** `index.astro` is generated from content where it can be: the project cards and the scrolling technology strip come from the projects collection. Only the first `HOME_CARDS` projects by `order` get a card (two rows); the first `WIDE_CARDS` of those get a wide card showing their first `desc` line, and every card links to `/projects#<id>`. The technology strip still covers every project. The typed line cycles through `phrases`, and the photo pile (`stack`) and the photography collage use hand-picked imports.
 
 **Content collections.** Projects are a YAML list in `src/content/projects.yaml`, with the schema in `src/content.config.ts`. Each entry needs a unique `id` and an `order` number, and may have a `status` (shown as a badge, e.g. "In progress"); the page sorts by `order` because collection order is not guaranteed. To add a project, add an entry to the YAML file. `Project.astro` takes an entry's `data` as props, typed from the schema.
 

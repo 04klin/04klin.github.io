@@ -1,6 +1,5 @@
 - id: space-rover-mission
   order: 1
-  status: In progress
   title: "Open Liberty Space Rover Mission"
   desc:
     - "IBM's open-source IoT game: players steer a physical rover across a game board with hand gestures, backed by Java microservices on Open Liberty"
