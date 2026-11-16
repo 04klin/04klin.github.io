@@ -10,7 +10,7 @@ Personal portfolio site built with Astro 5 (static output, no UI framework integ
 
 ```sh
 npm install          # install dependencies (npm is the only package manager; no yarn.lock)
-npm run dev          # dev server at http://localhost:4321
+npm run dev          # dev server on port 4321, on all interfaces, also reachable as lobsterlocal / lobstertail (server.host and server.allowedHosts in astro.config.mjs)
 npm run build        # astro check (type + schema check), then static build into dist/
 npm run preview      # serve the built dist/ locally
 npx astro check      # type check only
