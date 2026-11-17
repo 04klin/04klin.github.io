@@ -3,12 +3,16 @@
   Source of public/assets/og-image.png, the picture shown in link previews
   (Discord, iMessage, LinkedIn, ...). Regenerate with scripts/make-og-image.sh
   after editing. 1200x630 is the size every platform expects.
+
+  The mountains are the site's own: make-og-image.sh copies the mountain
+  landscape out of the built home page (dist/index.html) into the
+  placeholder below. The colours are the autumn day palette at golden hour.
 -->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=block");
+      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500&display=block");
 
       * {
         box-sizing: border-box;
@@ -18,167 +22,108 @@
         width: 1200px;
         height: 630px;
         margin: 0;
-        color: #a4a79f;
-        background-color: #0d0e0d;
+        color: #38463e;
         font-family: "IBM Plex Sans", sans-serif;
+        background-image: linear-gradient(
+          180deg,
+          #bccbd2 0%,
+          #e6d2b4 50%,
+          #f1c792 100%
+        );
         position: relative;
         overflow: hidden;
       }
 
-      .glow {
+      .sun {
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
+        background-color: #ffe0ae;
+        box-shadow:
+          0 0 50px 20px rgba(255, 214, 150, 0.8),
+          0 0 320px 150px rgba(255, 205, 140, 0.45);
         position: absolute;
+        top: 300px;
+        right: 190px;
       }
 
-      .glow-a {
-        width: 900px;
-        height: 520px;
-        background-image: radial-gradient(
-          closest-side,
-          rgba(163, 217, 119, 0.26),
-          rgba(163, 217, 119, 0)
-        );
-        top: -260px;
-        left: -160px;
-      }
-
-      .glow-b {
-        width: 820px;
-        height: 520px;
-        background-image: radial-gradient(
-          closest-side,
-          rgba(95, 212, 196, 0.2),
-          rgba(95, 212, 196, 0)
-        );
-        top: -220px;
-        right: -220px;
-      }
-
-      .grid {
-        background-image:
-          linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-        background-size: 48px 48px;
+      .landscape {
+        width: 100%;
+        height: 300px;
         position: absolute;
-        inset: 0;
-        mask-image: radial-gradient(
-          ellipse 90% 80% at 50% 0%,
-          #000 20%,
-          transparent 80%
-        );
+        bottom: 0;
+        left: 0;
+      }
+
+      .landscape .far {
+        fill: #ddd0b9;
+      }
+
+      .landscape .mid {
+        fill: #ddbf8e;
+      }
+
+      .landscape .ground {
+        fill: #d1ae80;
+      }
+
+      .landscape .pine {
+        fill: #a3b39b;
+      }
+
+      .landscape .leaf {
+        fill: #eaa66f;
+      }
+
+      .landscape .snowcap {
+        display: none;
       }
 
       .text {
         position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 80px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
+        top: 84px;
+        left: 88px;
       }
 
       .site {
-        display: flex;
         align-items: center;
         gap: 14px;
-        color: #f3f4f1;
-        font-family: "IBM Plex Mono", monospace;
-        font-size: 24px;
+        font-size: 26px;
+        display: flex;
       }
 
       .site img {
-        width: 52px;
-        height: 52px;
-        border: 2px solid rgba(255, 255, 255, 0.25);
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
       }
 
       h1 {
-        margin: 40px 0 0;
-        color: #f3f4f1;
-        font-size: 104px;
+        color: #14201a;
+        margin: 36px 0 0;
+        font-size: 112px;
         font-weight: 300;
         line-height: 1;
         letter-spacing: -0.035em;
       }
 
-      .name {
-        background-image: linear-gradient(
-          100deg,
-          #f3f4f1 0%,
-          #a3d977 50%,
-          #5fd4c4 100%
-        );
-        background-clip: text;
-        color: transparent;
-      }
-
-      .dot {
-        color: #a3d977;
-      }
-
       .tagline {
-        margin-top: 28px;
-        font-family: "IBM Plex Mono", monospace;
-        font-size: 30px;
-      }
-
-      .tagline span {
-        color: #a3d977;
-        margin: 0 10px;
-      }
-
-      .stack {
-        width: 250px;
-        height: 316px;
-        position: absolute;
-        top: 157px;
-        right: 120px;
-      }
-
-      .stack img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border: 5px solid #ededed;
-        border-radius: 10px;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-        position: absolute;
-        inset: 0;
-      }
-
-      .stack img:nth-child(1) {
-        transform: rotate(-13deg) translate(-56px, 12px);
-      }
-
-      .stack img:nth-child(2) {
-        transform: rotate(10deg) translate(52px, -2px);
-      }
-
-      .stack img:nth-child(3) {
-        transform: rotate(-2deg);
+        margin-top: 22px;
+        font-size: 32px;
       }
     </style>
   </head>
   <body>
-    <div class="glow glow-a"></div>
-    <div class="glow glow-b"></div>
-    <div class="grid"></div>
+    <div class="sun"></div>
+    <!-- LANDSCAPE -->
 
     <div class="text">
       <div class="site">
         <img src="../public/assets/tokyo_pfp.png" alt="" />
         04klin.github.io
       </div>
-      <h1>Hi, I'm <span class="name">Kevin</span><span class="dot">.</span></h1>
-      <div class="tagline">Projects<span>✦</span>Photography</div>
-    </div>
-
-    <div class="stack">
-      <img src="../src/assets/photography/marketplace.jpg" alt="" />
-      <img src="../src/assets/photography/alleyway.jpg" alt="" />
-      <img src="../src/assets/photography/mnt_fuji.jpg" alt="" />
+      <h1>Kevin Lin</h1>
+      <div class="tagline">Projects and photography</div>
     </div>
   </body>
 </html>

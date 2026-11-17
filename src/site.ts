@@ -1,7 +1,8 @@
 export const siteName = "Kevin Lin";
 
 export const contact = {
-  email: "2004klin@gmail.com",
+  /** Written out rather than linked, to keep it away from address scrapers. */
+  email: "2004klin[at]gmail.com",
   github: "04klin",
   githubUrl: "https://github.com/04klin",
   resume: "/assets/resume.pdf",

@@ -19,8 +19,7 @@
  * attributes), so the page never flashes the wrong scene.
  */
 
-const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
-type Season = (typeof SEASONS)[number];
+import { SEASONS, seasonOf, type Season } from "./seasons";
 
 const root = document.documentElement;
 
@@ -40,6 +39,21 @@ function save(storage: () => Storage, key: string, value: string) {
   } catch {
     // Storage can be unavailable (private mode); the buttons still work.
   }
+}
+
+/** The visitor's own season: chosen with the button, or today's. */
+function ownSeason(): Season {
+  let chosen: string | null = null;
+  try {
+    chosen = sessionStorage.getItem("season");
+  } catch {
+    // Storage unavailable; fall back to the date.
+  }
+  const now = new Date();
+  return (
+    SEASONS.find((s) => s === chosen) ??
+    seasonOf(`${now.getFullYear()}-${now.getMonth() + 1}`)!
+  );
 }
 
 /** Keeps the buttons' labels in step with the scene. */
@@ -129,4 +143,73 @@ export function setupSceneControls() {
     }
   });
   document.addEventListener("astro:page-load", updateLabels);
+}
+
+/**
+ * The walk (see the stylesheet): on the home page, scrolling down passes the
+ * time of day. Browsers with scroll-driven animations do it in CSS alone;
+ * elsewhere the animation is paused and moved along here, through --walk
+ * (0 at the top of the page, 1 at the bottom).
+ */
+export function setupWalkFallback() {
+  if (CSS.supports("animation-timeline: scroll()")) return;
+
+  let frame = 0;
+  const update = () => {
+    frame = 0;
+    const max = root.scrollHeight - window.innerHeight;
+    const progress = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+    root.style.setProperty("--walk", progress.toFixed(4));
+  };
+  const schedule = () => {
+    if (!frame) frame = requestAnimationFrame(update);
+  };
+
+  window.addEventListener("scroll", schedule, { passive: true });
+  window.addEventListener("resize", schedule);
+  // Straight away, and after each view transition swap (which replaces the
+  // <html> attributes, style included), so the sky never shows the wrong time.
+  update();
+  document.addEventListener("astro:page-load", update);
+}
+
+/**
+ * On the photography page each post carries the season it was taken in
+ * (data-season-of). As the page scrolls, the backdrop shows the season of the
+ * post at the middle of the screen; above the first post it shows the
+ * visitor's own. Nothing is saved, so other pages are unaffected. Returns a
+ * function that stops it.
+ */
+export function followPostSeasons() {
+  const posts = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-season-of]"),
+  );
+  if (posts.length === 0) return () => {};
+
+  let frame = 0;
+  const update = () => {
+    frame = 0;
+    const middle = window.innerHeight / 2;
+    // The last post whose top has passed the middle of the screen.
+    const current = posts.filter(
+      (post) => post.getBoundingClientRect().top < middle,
+    );
+    const season = current.at(-1)?.dataset.seasonOf ?? ownSeason();
+    if (root.dataset.season !== season) {
+      root.dataset.season = season;
+      updateLabels();
+    }
+  };
+  const schedule = () => {
+    if (!frame) frame = requestAnimationFrame(update);
+  };
+
+  window.addEventListener("scroll", schedule, { passive: true });
+  window.addEventListener("resize", schedule);
+  update();
+  return () => {
+    window.removeEventListener("scroll", schedule);
+    window.removeEventListener("resize", schedule);
+    cancelAnimationFrame(frame);
+  };
 }

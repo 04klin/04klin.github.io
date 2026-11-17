@@ -2,6 +2,7 @@
 import type { ImageMetadata } from "astro";
 import { Image, getImage } from "astro:assets";
 import Layout from "../layouts/Layout.astro";
+import { seasonOf } from "../scripts/seasons";
 
 import grandfatherMntPeak from "../assets/photography/grandfather_mnt_peak.jpg";
 import grandfatherMountainOutlook from "../assets/photography/grandfather_mountain_outlook.jpg";
@@ -100,7 +101,7 @@ const allPosts: Post[] = [
       },
     ],
     link: {
-      text: "View the album on Google Photos ↗",
+      text: "Album on Google Photos",
       url: "https://photos.app.goo.gl/3JvDXtwURSKwfL9k6",
     },
   },
@@ -108,7 +109,7 @@ const allPosts: Post[] = [
     title: "Tokyo and Osaka, Japan",
     date: "2025-12",
     link: {
-      text: "View the album on Google Photos ↗",
+      text: "Album on Google Photos",
       url: "https://photos.app.goo.gl/5ZfrFPxRZssD6Bo97",
     },
     photos: [
@@ -199,23 +200,20 @@ const posts = await Promise.all(
     >
   </dialog>
 
-  <div data-reveal>
+  <p class="link-row">
     <a
       href="https://www.flickr.com/photos/04klin/"
       target="_blank"
-      rel="noopener noreferrer"
-      class="button"
+      rel="noopener noreferrer">More on Flickr</a
     >
-      View my full portfolio on Flickr ↗
-    </a>
-  </div>
+  </p>
 
   {
     posts.map((post) => (
-      <article class="photo-post" data-reveal>
+      <article class="photo-post" data-season-of={seasonOf(post.date)}>
         <header class="photo-post-header">
           <h2>{post.title}</h2>
-          <div class="mini-label">{formatDate(post.date)}</div>
+          <p class="post-date">{formatDate(post.date)}</p>
         </header>
         {post.text && <p>{post.text}</p>}
 
@@ -270,19 +268,31 @@ const posts = await Promise.all(
         )}
 
         {post.link && (
-          <a
-            href={post.link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="button"
-          >
-            {post.link.text}
-          </a>
+          <p class="link-row">
+            <a href={post.link.url} target="_blank" rel="noopener noreferrer">
+              {post.link.text}
+            </a>
+          </p>
         )}
       </article>
     ))
   }
 </Layout>
+
+<script>
+  import { followPostSeasons } from "../scripts/scene";
+
+  // The backdrop takes the season of the post being looked at.
+  let stopSeasons: (() => void) | undefined;
+  document.addEventListener("astro:page-load", () => {
+    stopSeasons?.();
+    stopSeasons = followPostSeasons();
+  });
+  document.addEventListener("astro:before-swap", () => {
+    stopSeasons?.();
+    stopSeasons = undefined;
+  });
+</script>
 
 <script>
   // Arrow buttons beside each sideways-scrolling row of photos. They stay

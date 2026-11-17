@@ -2,15 +2,12 @@
 import { Image } from "astro:assets";
 import { getCollection } from "astro:content";
 import Layout from "../layouts/Layout.astro";
-import { contact } from "../site";
 import alleyway from "../assets/photography/alleyway.jpg";
-import grandfatherMntPeak from "../assets/photography/grandfather_mnt_peak.jpg";
-import hills from "../assets/photography/hills.jpg";
 import marketplace from "../assets/photography/marketplace.jpg";
 import mntFuji from "../assets/photography/mnt_fuji.jpg";
 
-// Rotating endings for "I ..." under the greeting. The first one is what
-// shows without JavaScript or with reduced motion.
+// Endings for "I ..." under the greeting. One is picked at random on each
+// visit; the first is what shows without JavaScript.
 const phrases = [
   "love my work, and my work loves me.",
   "can't wait to see my coworkers.",
@@ -28,195 +25,83 @@ const projects = (await getCollection("projects")).sort(
   (a, b) => a.data.order - b.data.order,
 );
 
-// The first projects (by `order`) get a wide card with a line of description.
-const WIDE_CARDS = 2;
-// Two rows: the wide pair, then three small cards. The rest are on /projects.
-const HOME_CARDS = 5;
+// How many projects (by `order`) the home page lists. The rest are on
+// /projects.
+const HOME_PROJECTS = 5;
 
-// Every technology used across the projects, for the scrolling strip.
-const allTech = [...new Set(projects.flatMap((project) => project.data.tech))];
-
-// Fanned-out prints next to the greeting. The last one sits on top.
+// Fanned-out prints in the photography section. The last one sits on top.
 const stack = [marketplace, alleyway, mntFuji];
 ---
 
-<Layout current="home">
+<Layout current="home" walk>
   <section class="hero">
-    <div class="hero-text">
-      <h1 data-reveal>
-        Hi, I'm <span class="hero-name">Kevin</span><span class="accent">.</span
-        >
-      </h1>
-      <p class="typed-line" data-reveal>
-        <span class="sr-only">I {phrases.join(" I ")}</span>
-        <span aria-hidden="true">
-          I <span class="typed-text" data-typed={JSON.stringify(phrases)}
-            >{phrases[0]}</span
-          ><span class="typed-caret"></span>
-        </span>
-      </p>
-
-      <div class="button-row" data-reveal>
-        <a href={`mailto:${contact.email}`} class="button">
-          <img src="/assets/icons/at-solid.svg" alt="Email" />
-          {contact.email}
-        </a>
-        <a
-          href={contact.githubUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="button"
-        >
-          <img src="/assets/icons/github-octocat.svg" alt="GitHub" />
-          {contact.github}
-        </a>
-        <a href={contact.resume} target="_blank" class="button button-primary">
-          Resume &nearr;
-        </a>
-      </div>
-    </div>
-
-    <a
-      href="/photography"
-      class="photo-stack"
-      aria-label="Photography"
-      data-reveal
-    >
-      {
-        stack.map((photo) => (
-          <Image
-            src={photo}
-            alt=""
-            width={460}
-            height={580}
-            fit="cover"
-            loading="eager"
-            class="stack-photo"
-          />
-        ))
-      }
-    </a>
+    <h1>Hi, I'm Kevin.</h1>
+    <p class="hero-line">
+      I <span data-phrases={JSON.stringify(phrases)}>{phrases[0]}</span>
+    </p>
   </section>
 
-  <!-- The list is repeated once so the strip can loop without a seam. -->
-  <div class="marquee" data-reveal>
-    <div class="marquee-track">
-      {
-        [false, true].map((isCopy) => (
-          <ul class="marquee-group" aria-hidden={isCopy ? "true" : undefined}>
-            {allTech.map((tech) => (
-              <li>{tech}</li>
-            ))}
-          </ul>
-        ))
-      }
-    </div>
-  </div>
-
   <section class="section">
-    <div class="section-heading" data-reveal>
+    <div class="section-heading">
       <h2>Projects</h2>
-      <a href="/projects" class="section-link">
-        All projects <span aria-hidden="true">&rarr;</span>
-      </a>
+      <a href="/projects" class="section-link">All projects</a>
     </div>
-    <div class="bento">
+    <ul class="project-rows">
       {
-        projects.slice(0, HOME_CARDS).map((project, i) => (
-          <a
-            href={`/projects#${project.id}`}
-            class:list={["card", { "card-wide": i < WIDE_CARDS }]}
-            data-glow
-            data-reveal
-          >
-            <span class="card-arrow" aria-hidden="true">
-              &nearr;
-            </span>
-            {project.data.status && (
-              <div class="card-top">
-                <span class="status-badge">{project.data.status}</span>
-              </div>
-            )}
-            <h3>{project.data.title}</h3>
-            {i < WIDE_CARDS && <p>{project.data.desc[0]}</p>}
-            <div class="chips">
-              {project.data.tech.slice(0, 4).map((tech) => (
-                <span class="chip">{tech}</span>
-              ))}
-            </div>
-          </a>
+        projects.slice(0, HOME_PROJECTS).map((project) => (
+          <li>
+            <a href={`/projects#${project.id}`}>
+              <span class="project-row-title">
+                {project.data.title}
+                {project.data.status && (
+                  <span class="status">{project.data.status}</span>
+                )}
+              </span>
+              {project.data.context && (
+                <span class="project-row-context">{project.data.context}</span>
+              )}
+            </a>
+          </li>
         ))
       }
-    </div>
+    </ul>
   </section>
 
   <section class="section">
-    <div class="section-heading" data-reveal>
+    <div class="section-heading">
       <h2>Photography</h2>
-      <a href="/photography" class="section-link">
-        All photos <span aria-hidden="true">&rarr;</span>
-      </a>
+      <a href="/photography" class="section-link">All photos</a>
     </div>
-    <a href="/photography" class="collage" data-reveal>
-      <div class="collage-cell">
-        <Image
-          src={grandfatherMntPeak}
-          alt=""
-          width={1300}
-          height={720}
-          fit="cover"
-        />
-        <div class="collage-caption">
-          <div class="mini-label">Shot on Canon EOS Rebel T7</div>
-          <div class="collage-title">Mountains, streets & travel</div>
-        </div>
-      </div>
-      <div class="collage-cell">
-        <Image src={hills} alt="" width={760} height={720} fit="cover" />
-      </div>
-    </a>
+    <div class="photo-feature">
+      <a href="/photography" class="photo-stack" aria-label="Photography">
+        {
+          stack.map((photo) => (
+            <Image
+              src={photo}
+              alt=""
+              width={460}
+              height={580}
+              fit="cover"
+              class="stack-photo"
+            />
+          ))
+        }
+      </a>
+      <p>
+        Mostly hikes and trips: Grandfather Mountain, Linville Gorge, Tokyo,
+        Osaka and New York, shot on a Canon EOS Rebel T7.
+      </p>
+    </div>
   </section>
 </Layout>
 
 <script>
-  // Types and deletes the phrases under the greeting, one after another.
-  let stop: (() => void) | undefined;
-
+  // Picks one of the endings at random for this visit.
   document.addEventListener("astro:page-load", () => {
-    stop?.();
-    stop = undefined;
-
-    const el = document.querySelector<HTMLElement>("[data-typed]");
-    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-      return;
-
-    const phrases: string[] = JSON.parse(el.dataset.typed ?? "[]");
-    if (phrases.length < 2) return;
-
-    let phrase = 0;
-    let length = phrases[0].length;
-    let deleting = true;
-    let timer: ReturnType<typeof setTimeout>;
-
-    const tick = () => {
-      length += deleting ? -1 : 1;
-      el.textContent = phrases[phrase].slice(0, length);
-
-      let delay = deleting ? 24 : 52;
-      if (!deleting && length === phrases[phrase].length) {
-        deleting = true;
-        delay = 2200; // hold the finished phrase
-      } else if (deleting && length === 0) {
-        deleting = false;
-        phrase = (phrase + 1) % phrases.length;
-        delay = 350;
-      }
-      timer = setTimeout(tick, delay);
-    };
-
-    timer = setTimeout(tick, 2800);
-    stop = () => clearTimeout(timer);
+    const el = document.querySelector<HTMLElement>("[data-phrases]");
+    if (!el) return;
+    const phrases: string[] = JSON.parse(el.dataset.phrases ?? "[]");
+    if (phrases.length > 0)
+      el.textContent = phrases[Math.floor(Math.random() * phrases.length)];
   });
-
-  document.addEventListener("astro:before-swap", () => stop?.());
 </script>

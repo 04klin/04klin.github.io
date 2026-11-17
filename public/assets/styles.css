@@ -7,29 +7,23 @@
 
   --bg: #0d0e0d;
   --surface: rgba(255, 255, 255, 0.035);
-  --surface-hover: rgba(255, 255, 255, 0.06);
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.18);
   --text: #f3f4f1;
   --muted: #a4a79f;
   --faint: #70736c;
 
-  /* Leaf green from the profile picture, and an aurora teal to go with it. */
+  /* Leaf green from the profile picture. */
   --accent: #a3d977;
   --accent-rgb: 163, 217, 119;
-  --accent-2: #5fd4c4;
-  --accent-2-rgb: 95, 212, 196;
 
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  --accent-hover: #b9e695;
   --nav-bg: rgba(18, 19, 18, 0.72);
-  --nav-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
-  --nav-pill: rgba(255, 255, 255, 0.1);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --radius: 16px;
+  --radius: 6px;
   --page-width: 1000px;
   --page-gutter: 24px;
 }
@@ -41,7 +35,6 @@
 
   --bg: #eef3ec;
   --surface: rgba(255, 255, 255, 0.55);
-  --surface-hover: rgba(255, 255, 255, 0.75);
   --border: rgba(24, 48, 34, 0.12);
   --border-strong: rgba(24, 48, 34, 0.24);
   --text: #14201a;
@@ -50,13 +43,8 @@
 
   --accent: #3c7a28;
   --accent-rgb: 60, 122, 40;
-  --accent-2: #1d7f74;
-  --accent-2-rgb: 29, 127, 116;
 
-  --accent-hover: #4a8f33;
   --nav-bg: rgba(255, 255, 255, 0.72);
-  --nav-shadow: 0 10px 40px rgba(30, 60, 45, 0.15);
-  --nav-pill: rgba(24, 48, 34, 0.08);
 }
 
 /* ---------------------------------------------------------------------------
@@ -137,10 +125,6 @@ p {
   outline-offset: 3px;
 }
 
-.accent {
-  color: var(--accent);
-}
-
 .sr-only {
   width: 1px;
   height: 1px;
@@ -150,19 +134,61 @@ p {
   overflow: hidden;
 }
 
-.mini-label {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 /* ---------------------------------------------------------------------------
    Backdrop (Backdrop.astro): one of four landscapes, picked per visit, in the
    colours of the season, by day or by night (all set on <html> by the
-   layout's inline script), and a glow that follows the cursor (motion.ts).
+   layout's inline script).
    --------------------------------------------------------------------------- */
+
+/* Time of day on the home page (the "walk", see the animation section).
+   Registered so they can be animated; the initial values are midday by day
+   and midnight by night, which every other page keeps. */
+@property --warm {
+  /* Day: how far the light has turned towards morning or golden hour. */
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@property --eve {
+  /* Day: 0 for morning light, 1 for evening light. */
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@property --lift {
+  /* Night: how much of the day colour is left in the landscape. */
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+@property --horizon {
+  /* Night: the glow along the horizon at dusk and before dawn. */
+  syntax: "<color>";
+  inherits: true;
+  initial-value: rgba(0, 0, 0, 0);
+}
+
+@property --stars {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+@property --orb-x {
+  /* Where the sun or moon is, along its arc across the sky. */
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 50%;
+}
+
+@property --orb-y {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 15%;
+}
 
 /* Each season's daytime colours: hazy and light, so dark text stays readable
    over them. Summer is also the fallback without JavaScript. */
@@ -220,29 +246,56 @@ p {
   --snow-day: #f8fbfc;
 }
 
-/* Night: the same colours, mostly sunk into the dark, nearer layers more. */
+/* Night: the same colours, mostly sunk into the dark, nearer layers more.
+   --lift brings some colour back at dusk and before dawn. */
 .backdrop {
   --night: #080d0b;
-  --far: color-mix(in srgb, var(--far-day) 10%, var(--night));
-  --mid: color-mix(in srgb, var(--mid-day) 7%, var(--night));
-  --ground: color-mix(in srgb, var(--ground-day) 4%, var(--night));
-  --pine: color-mix(in srgb, var(--pine-day) 4%, var(--night));
-  --leaf: color-mix(in srgb, var(--leaf-day) 9%, var(--night));
-  --water: color-mix(in srgb, var(--water-day) 12%, var(--night));
-  --snow: color-mix(in srgb, var(--snow-day) 22%, var(--night));
+  --far: color-mix(
+    in srgb,
+    var(--far-day) calc(10% * var(--lift)),
+    var(--night)
+  );
+  --mid: color-mix(
+    in srgb,
+    var(--mid-day) calc(7% * var(--lift)),
+    var(--night)
+  );
+  --ground: color-mix(
+    in srgb,
+    var(--ground-day) calc(4% * var(--lift)),
+    var(--night)
+  );
+  --pine: color-mix(
+    in srgb,
+    var(--pine-day) calc(4% * var(--lift)),
+    var(--night)
+  );
+  --leaf: color-mix(
+    in srgb,
+    var(--leaf-day) calc(9% * var(--lift)),
+    var(--night)
+  );
+  --water: color-mix(
+    in srgb,
+    var(--water-day) calc(12% * var(--lift)),
+    var(--night)
+  );
+  --snow: color-mix(
+    in srgb,
+    var(--snow-day) calc(22% * var(--lift)),
+    var(--night)
+  );
   --mist: 200, 222, 210;
   --mist-strength: 0.07;
 
   z-index: -1;
   pointer-events: none;
-  /* Night sky, lightening slightly towards the horizon. */
+  /* Night sky, lightening slightly towards the horizon, with the dusk or
+     dawn glow (--horizon) over it. */
   background-color: var(--bg);
-  background-image: linear-gradient(
-    180deg,
-    #0a0f0d 0%,
-    #0f1714 55%,
-    #18241f 100%
-  );
+  background-image:
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 20%, var(--horizon) 62%),
+    linear-gradient(180deg, #0a0f0d 0%, #0f1714 55%, #18241f 100%);
   position: fixed;
   inset: 0;
   overflow: hidden;
@@ -250,20 +303,67 @@ p {
 
 /* Snow catches the moonlight. */
 [data-season="winter"]:not([data-theme="day"]) .backdrop {
-  --far: color-mix(in srgb, var(--far-day) 12%, var(--night));
-  --snow: color-mix(in srgb, var(--snow-day) 15%, var(--night));
-  --mid: color-mix(in srgb, var(--mid-day) 12%, var(--night));
-  --ground: color-mix(in srgb, var(--ground-day) 12%, var(--night));
+  --far: color-mix(
+    in srgb,
+    var(--far-day) calc(12% * var(--lift)),
+    var(--night)
+  );
+  --snow: color-mix(
+    in srgb,
+    var(--snow-day) calc(15% * var(--lift)),
+    var(--night)
+  );
+  --mid: color-mix(
+    in srgb,
+    var(--mid-day) calc(12% * var(--lift)),
+    var(--night)
+  );
+  --ground: color-mix(
+    in srgb,
+    var(--ground-day) calc(12% * var(--lift)),
+    var(--night)
+  );
 }
 
+/* By day, --tint is the low sun's colour (peach in the morning, gold in the
+   evening), and --warm says how much of it is in the light: none at midday. */
 [data-theme="day"] .backdrop {
-  --far: var(--far-day);
-  --mid: var(--mid-day);
-  --ground: var(--ground-day);
-  --pine: var(--pine-day);
-  --leaf: var(--leaf-day);
-  --water: var(--water-day);
-  --snow: var(--snow-day);
+  --tint: color-mix(in srgb, #f6c9b6, #f0a75e calc(var(--eve) * 100%));
+  --far: color-mix(
+    in srgb,
+    var(--far-day),
+    var(--tint) calc(var(--warm) * 22%)
+  );
+  --mid: color-mix(
+    in srgb,
+    var(--mid-day),
+    var(--tint) calc(var(--warm) * 16%)
+  );
+  --ground: color-mix(
+    in srgb,
+    var(--ground-day),
+    var(--tint) calc(var(--warm) * 12%)
+  );
+  --pine: color-mix(
+    in srgb,
+    var(--pine-day),
+    var(--tint) calc(var(--warm) * 10%)
+  );
+  --leaf: color-mix(
+    in srgb,
+    var(--leaf-day),
+    var(--tint) calc(var(--warm) * 10%)
+  );
+  --water: color-mix(
+    in srgb,
+    var(--water-day),
+    var(--tint) calc(var(--warm) * 25%)
+  );
+  --snow: color-mix(
+    in srgb,
+    var(--snow-day),
+    var(--tint) calc(var(--warm) * 20%)
+  );
   --mist: 255, 255, 255;
   --mist-strength: 0.45;
 }
@@ -272,20 +372,10 @@ p {
   opacity: 0;
   background-image: linear-gradient(
     180deg,
-    var(--sky-top) 0%,
-    var(--sky-mid) 45%,
-    var(--sky-bottom) 100%
-  );
-  position: absolute;
-  inset: 0;
-}
-
-.backdrop::after {
-  content: "";
-  background-image: radial-gradient(
-    520px circle at var(--spot-x, 50%) var(--spot-y, 30%),
-    rgba(var(--accent-rgb), 0.06),
-    rgba(var(--accent-rgb), 0) 70%
+    color-mix(in srgb, var(--sky-top), var(--tint) calc(var(--warm) * 12%)) 0%,
+    color-mix(in srgb, var(--sky-mid), var(--tint) calc(var(--warm) * 40%)) 45%,
+    color-mix(in srgb, var(--sky-bottom), var(--tint) calc(var(--warm) * 58%))
+      100%
   );
   position: absolute;
   inset: 0;
@@ -314,11 +404,19 @@ p {
 .sun {
   width: 52px;
   height: 52px;
-  background-color: #fff8e0;
+  background-color: color-mix(
+    in srgb,
+    #fff8e0,
+    #ffc27e calc(var(--warm) * 70%)
+  );
   opacity: 0;
   box-shadow:
     0 0 40px 16px rgba(255, 244, 205, 0.8),
     0 0 300px 140px rgba(255, 240, 200, 0.45);
+}
+
+.stars {
+  opacity: var(--stars);
 }
 
 .stars span {
@@ -527,52 +625,6 @@ p {
   visibility: hidden;
 }
 
-/* The season and day/night buttons, at the right end of the top bar. */
-.header-controls {
-  pointer-events: auto;
-  gap: 8px;
-  display: flex;
-  position: absolute;
-  top: 0;
-  right: 16px;
-}
-
-.icon-button {
-  /* As tall as the top bar. */
-  width: 46px;
-  height: 46px;
-  color: var(--text);
-  background-color: var(--nav-bg);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  box-shadow: var(--nav-shadow);
-  cursor: pointer;
-  justify-content: center;
-  align-items: center;
-  display: flex;
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  backdrop-filter: blur(16px) saturate(150%);
-  transition:
-    border-color 0.2s ease,
-    transform 0.5s var(--ease-out);
-}
-
-.icon-button:hover {
-  border-color: var(--accent);
-  transform: rotate(-15deg);
-}
-
-.icon-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.icon-button svg {
-  width: 20px;
-  height: 20px;
-  display: none;
-}
-
 /* The day/night button shows what a click switches to: the sun at night,
    the moon by day. The season button shows the current season. */
 .theme-toggle .icon-sun,
@@ -592,8 +644,7 @@ p {
 /* While the theme or season switches (scene.ts), the whole page is one
    snapshot, and the change is revealed in a growing circle instead of a
    crossfade. */
-.theme-switching .site-header,
-.theme-switching .nav-pill {
+.theme-switching .nav-mark {
   view-transition-name: none;
 }
 
@@ -618,86 +669,56 @@ p {
   }
 }
 
-/* Reading progress along the top edge, where the browser supports it. */
-.scroll-progress {
-  z-index: 200;
-  height: 2px;
-  background-image: linear-gradient(90deg, var(--accent), var(--accent-2));
-  transform-origin: 0 50%;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  transform: scaleX(0);
-}
-
 /* ---------------------------------------------------------------------------
    Top bar and footer
    --------------------------------------------------------------------------- */
 
+/* A plain row at the top of the page column: name on the left, links and
+   the two scene buttons on the right. It scrolls away with the page. */
 .site-header {
-  z-index: 100;
-  pointer-events: none;
-  view-transition-name: site-header;
-  justify-content: center;
-  padding: 0 12px;
-  display: flex;
-  position: fixed;
-  top: 16px;
-  left: 0;
-  right: 0;
-}
-
-.site-nav {
-  pointer-events: auto;
-  background-color: var(--nav-bg);
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  width: min(100% - 2 * var(--page-gutter), var(--page-width));
+  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
-  gap: 20px;
-  padding: 6px;
+  gap: 12px 24px;
+  margin: 0 auto;
+  padding: 28px 0;
   display: flex;
-  box-shadow: var(--nav-shadow);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  backdrop-filter: blur(16px) saturate(150%);
 }
 
 .brand {
   color: var(--text);
   align-items: center;
   gap: 10px;
-  padding-right: 4px;
-  font-size: 0.9375rem;
   font-weight: 500;
   text-decoration: none;
   display: flex;
 }
 
 .brand-avatar {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--border-strong);
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  transition:
-    transform 0.5s var(--ease-out),
-    border-color 0.3s ease;
 }
 
-.brand:hover .brand-avatar {
-  border-color: var(--accent);
-  transform: rotate(-10deg) scale(1.1);
+.brand:hover {
+  color: var(--accent);
+}
+
+.nav-right {
+  align-items: center;
+  gap: 28px;
+  display: flex;
 }
 
 .nav-links {
-  gap: 2px;
+  gap: 24px;
   display: flex;
 }
 
 .nav-link {
   color: var(--muted);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 0.9375rem;
+  padding: 4px 0;
   text-decoration: none;
   transition: color 0.2s ease;
   position: relative;
@@ -708,21 +729,56 @@ p {
   color: var(--text);
 }
 
-.nav-label {
-  position: relative;
-}
-
-.nav-pill {
+/* Underline under the current page. Its own element so it can slide
+   between links on navigation. */
+.nav-mark {
   view-transition-name: nav-current;
-  background-color: var(--nav-pill);
-  border-radius: 999px;
+  height: 1px;
+  background-color: currentColor;
   position: absolute;
-  inset: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 ::view-transition-group(nav-current) {
   animation-duration: 0.45s;
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* The season and day/night buttons: bare icons, no chrome. */
+.header-controls {
+  gap: 4px;
+  display: flex;
+}
+
+.icon-button {
+  width: 32px;
+  height: 32px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  transition: color 0.2s ease;
+}
+
+.icon-button:hover {
+  color: var(--text);
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+  display: none;
 }
 
 .site-footer {
@@ -766,7 +822,7 @@ p {
 .page {
   width: min(100% - 2 * var(--page-gutter), var(--page-width));
   margin: 0 auto;
-  padding: 136px 0 120px;
+  padding: 48px 0 120px;
 }
 
 .page-header {
@@ -798,138 +854,46 @@ p {
   text-decoration: none;
 }
 
-.section-link span {
-  transition: transform 0.4s var(--ease-out);
-  display: inline-block;
+.section-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-.section-link:hover span {
-  transform: translateX(4px);
-}
-
-.button-row {
+/* A row of plain text links (project links, albums, the 404 page). */
+.link-row {
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px 24px;
   display: flex;
 }
 
-.button {
+.link-row a {
   color: var(--text);
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 18px;
-  font-size: 0.9375rem;
-  line-height: 1.4;
-  text-decoration: none;
-  transition:
-    transform 0.3s var(--ease-out),
-    border-color 0.2s ease,
-    background-color 0.2s ease;
-  display: inline-flex;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
 }
 
-.button img {
-  width: 16px;
-  height: 16px;
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
-}
-
-/* The icons are white SVG files; darken them on the light day theme. */
-[data-theme="day"] .button img {
-  filter: invert(1);
-}
-
-.button:hover {
-  background-color: var(--surface-hover);
-  border-color: var(--accent);
-  transform: translateY(-2px);
-}
-
-.button:hover img {
-  opacity: 1;
-}
-
-.button:active {
-  transform: translateY(0);
-}
-
-.button-primary {
-  color: var(--bg);
-  background-color: var(--accent);
-  border-color: var(--accent);
-  font-weight: 500;
-}
-
-.button-primary:hover {
-  background-color: var(--accent-hover);
-  box-shadow: 0 8px 28px rgba(var(--accent-rgb), 0.28);
-}
-
-.chips {
-  flex-wrap: wrap;
-  gap: 8px;
-  display: flex;
-}
-
-.chip {
-  color: var(--text);
-  background-color: var(--surface-hover);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 3px 10px;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  line-height: 1.5;
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
-}
-
-/* Badge for a project's optional `status`, with a pulsing dot. */
-.status-badge {
+.link-row a:hover {
   color: var(--accent);
-  background-color: rgba(var(--accent-rgb), 0.1);
-  border: 1px solid rgba(var(--accent-rgb), 0.3);
-  border-radius: 999px;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 9px;
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.04em;
-  line-height: 1.5;
-  text-transform: uppercase;
-  white-space: nowrap;
-  display: inline-flex;
 }
 
-.status-badge::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  background-color: var(--accent);
-  border-radius: 50%;
-}
-
-.project-aside .status-badge {
-  margin-top: 12px;
+/* A project's optional `status`, e.g. "In progress". */
+.status {
+  color: var(--accent);
+  font-size: 0.875rem;
 }
 
 /* ---------------------------------------------------------------------------
    Home: hero
    --------------------------------------------------------------------------- */
 
+/* The greeting and photo pile sit at the top of a full-height first screen,
+   leaving the rest of it to the landscape. The page header and the page's
+   top padding take about 140px. */
 .hero {
-  min-height: min(60vh, 520px);
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 48px;
-  display: grid;
+  min-height: calc(100svh - 140px);
+  padding-top: 4vh;
 }
 
 .hero h1 {
@@ -938,44 +902,26 @@ p {
   letter-spacing: -0.03em;
 }
 
-/* The name is filled with a green-to-teal gradient that drifts slowly. */
-.hero-name {
-  background-image: linear-gradient(
-    100deg,
-    var(--text) 0%,
-    var(--accent) 45%,
-    var(--accent-2) 70%,
-    var(--text) 100%
-  );
-  background-size: 220% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.typed-line {
-  min-height: 1.6em;
-  color: var(--muted);
+.hero-line {
   margin-top: 16px;
-  font-family: var(--font-mono);
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
 }
 
-.typed-text {
-  color: var(--text);
+/* ---------------------------------------------------------------------------
+   Home: photography
+   --------------------------------------------------------------------------- */
+
+/* The photo pile beside a line about where the photos come from. */
+.photo-feature {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 40px 72px;
+  display: grid;
 }
 
-.typed-caret {
-  width: 2px;
-  height: 1.15em;
-  vertical-align: text-bottom;
-  background-color: var(--accent);
-  margin-left: 3px;
-  display: inline-block;
-}
-
-.hero .button-row {
-  margin-top: 32px;
+.photo-feature p {
+  max-width: 26em;
+  font-size: 1.125rem;
 }
 
 /* Three prints in a loose pile that fan out on hover. */
@@ -1027,223 +973,42 @@ p {
 }
 
 /* ---------------------------------------------------------------------------
-   Home: scrolling strip of technologies
+   Home: project list
    --------------------------------------------------------------------------- */
 
-.marquee {
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  margin-top: 72px;
-  padding: 16px 0;
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    transparent,
-    #000 12%,
-    #000 88%,
-    transparent
-  );
-  mask-image: linear-gradient(
-    90deg,
-    transparent,
-    #000 12%,
-    #000 88%,
-    transparent
-  );
-}
-
-.marquee-track {
-  width: max-content;
-  display: flex;
-}
-
-.marquee-group {
-  flex: none;
+.project-rows {
   margin: 0;
   padding: 0;
   list-style: none;
-  display: flex;
 }
 
-.marquee-group li {
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-}
-
-.marquee-group li::after {
-  content: "\2726";
-  color: var(--accent);
-  margin: 0 28px;
-  font-size: 0.625rem;
-  vertical-align: 0.15em;
-}
-
-/* ---------------------------------------------------------------------------
-   Home: project cards
-   --------------------------------------------------------------------------- */
-
-.bento {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 16px;
-  display: grid;
-}
-
-.card {
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  flex-direction: column;
-  grid-column: span 2;
-  padding: 22px;
-  text-decoration: none;
-  transition:
-    transform 0.35s var(--ease-out),
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
-  display: flex;
-  position: relative;
-  overflow: hidden;
-  /* --tilt-x/y are set by motion.ts while the cursor is over the card. */
-  transform: perspective(900px) rotateX(var(--tilt-x, 0deg))
-    rotateY(var(--tilt-y, 0deg)) translateY(var(--lift, 0px));
-}
-
-.card-wide {
-  grid-column: span 3;
-}
-
-/* After the two wide cards the rest sit three to a row. Whatever is left
-   over in the last row is stretched so the row is always full. */
-@media (min-width: 861px) {
-  .card:last-child:nth-child(3n) {
-    grid-column: span 6;
-  }
-
-  .card:nth-last-child(2):nth-child(3n),
-  .card:last-child:nth-child(3n + 1) {
-    grid-column: span 3;
-  }
-}
-
-/* Glow under the cursor; --glow-x/y are set by motion.ts. */
-.card::before {
-  content: "";
-  opacity: 0;
-  pointer-events: none;
-  background-image: radial-gradient(
-    280px circle at var(--glow-x, 50%) var(--glow-y, 50%),
-    rgba(var(--accent-rgb), 0.14),
-    rgba(var(--accent-rgb), 0) 70%
-  );
-  transition: opacity 0.4s ease;
-  position: absolute;
-  inset: 0;
-}
-
-.card:hover {
-  --lift: -4px;
-  border-color: rgba(var(--accent-rgb), 0.45);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
-}
-
-.card:hover::before {
-  opacity: 1;
-}
-
-.card-top {
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  display: flex;
-}
-
-/* Pinned to the corner so it takes no room above the title. */
-.card-arrow {
-  color: var(--accent);
-  position: absolute;
-  top: 18px;
-  right: 22px;
-  opacity: 0;
-  transition:
-    opacity 0.3s ease,
-    transform 0.4s var(--ease-out);
-  transform: translate(-6px, 6px);
-}
-
-.card:hover .card-arrow {
-  opacity: 1;
-  transform: translate(0, 0);
-}
-
-/* Keeps long titles clear of the corner arrow. */
-.card h3 {
-  padding-right: 20px;
-}
-
-.card p {
-  margin-top: 8px;
-  font-size: 0.9375rem;
-  line-height: 1.55;
-}
-
-.card .chips {
-  margin-top: auto;
-  padding-top: 20px;
-}
-
-/* ---------------------------------------------------------------------------
-   Home: photography collage
-   --------------------------------------------------------------------------- */
-
-.collage {
-  height: 340px;
-  grid-template-columns: 1.7fr 1fr;
-  gap: 16px;
+.project-rows a {
+  border-top: 1px solid var(--border);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
+  gap: 4px 56px;
+  padding: 18px 0;
   text-decoration: none;
   display: grid;
 }
 
-.collage-cell {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  transition: border-color 0.3s ease;
-  position: relative;
-  overflow: hidden;
+.project-rows li:last-child a {
+  border-bottom: 1px solid var(--border);
 }
 
-.collage-cell img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 1.4s var(--ease-out);
-}
-
-.collage:hover .collage-cell {
-  border-color: rgba(var(--accent-rgb), 0.45);
-}
-
-.collage:hover .collage-cell img {
-  transform: scale(1.06);
-}
-
-.collage-caption {
-  background-image: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.8));
-  padding: 64px 22px 18px;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-}
-
-.collage-caption .mini-label {
-  color: #d5d7d1;
-}
-
-.collage-title {
+.project-row-title {
   color: var(--text);
-  margin-top: 2px;
-  font-size: 1.125rem;
+}
+
+.project-row-context {
+  color: var(--faint);
+}
+
+.project-row-title .status {
+  margin-left: 10px;
+}
+
+.project-rows a:hover .project-row-title {
+  color: var(--accent);
 }
 
 /* ---------------------------------------------------------------------------
@@ -1256,53 +1021,39 @@ p {
   gap: 16px 56px;
   padding: 48px 0;
   display: grid;
-  /* Clear of the fixed top bar when linked to from the home page. */
-  scroll-margin-top: 96px;
+  scroll-margin-top: 24px;
 }
 
 .project-aside {
   align-self: start;
   position: sticky;
-  top: 104px;
+  top: 32px;
 }
 
-.project-desc {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.project-context {
+  color: var(--faint);
+  margin-top: 6px;
+  font-size: 0.9375rem;
 }
 
-.project-desc li {
-  padding-left: 22px;
-  position: relative;
+.project-about {
+  max-width: 36em;
+  color: var(--text);
+  margin-bottom: 20px;
+  font-size: 1.0625rem;
 }
 
-.project-desc li + li {
+.project-body .tech {
+  color: var(--faint);
+  font-size: 0.875rem;
+}
+
+.project-body .link-row {
+  margin-top: 16px;
+}
+
+.project-aside .status {
   margin-top: 8px;
-}
-
-.project-desc li::before {
-  content: "";
-  width: 8px;
-  height: 1px;
-  background-color: var(--accent);
-  position: absolute;
-  top: 0.8em;
-  left: 0;
-}
-
-.project-body .chips {
-  margin-top: 24px;
-}
-
-.project-body .chip:hover {
-  color: var(--bg);
-  background-color: var(--accent);
-  border-color: var(--accent);
-}
-
-.project-body .button-row {
-  margin-top: 24px;
 }
 
 /* ---------------------------------------------------------------------------
@@ -1311,6 +1062,15 @@ p {
 
 .photo-post {
   margin-top: 80px;
+}
+
+.post-date {
+  color: var(--faint);
+  font-size: 0.875rem;
+}
+
+.photo-post .link-row {
+  margin-top: 20px;
 }
 
 .photo-post-header {
@@ -1384,13 +1144,9 @@ p {
   /* Centred on the photos, above the room left for the scrollbar. */
   top: calc(50% - 26px);
   opacity: 0;
-  box-shadow: var(--nav-shadow);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   transition:
     opacity 0.25s ease,
-    border-color 0.3s ease,
-    transform 0.3s var(--ease-out);
+    border-color 0.3s ease;
 }
 
 .photo-scroll-prev {
@@ -1417,7 +1173,6 @@ p {
 
 .photo-scroll-button:hover {
   border-color: var(--accent);
-  transform: scale(1.1);
 }
 
 @media (hover: none) {
@@ -1450,16 +1205,6 @@ p {
 
 .photo-button:hover {
   border-color: rgba(var(--accent-rgb), 0.45);
-  transform: translateY(-4px);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
-}
-
-.photo-button:hover img {
-  transform: scale(1.05);
-}
-
-.photo-grid + .button {
-  margin-top: 20px;
 }
 
 /* Lightbox */
@@ -1580,23 +1325,11 @@ p {
    404 page
    --------------------------------------------------------------------------- */
 
-/* The layout's <h1>, made big and filled like the name on the home page. */
+/* The layout's <h1>, made big. */
 .page:has(.not-found) .page-header h1 {
   font-size: clamp(6rem, 22vw, 12rem);
-  font-weight: 500;
   line-height: 1;
   letter-spacing: -0.06em;
-  background-image: linear-gradient(
-    100deg,
-    var(--text) 0%,
-    var(--accent) 45%,
-    var(--accent-2) 70%,
-    var(--text) 100%
-  );
-  background-size: 220% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 .not-found-photo {
@@ -1614,6 +1347,7 @@ p {
 
 .not-found-photo figcaption {
   margin-top: 12px;
+  font-size: 0.875rem;
 }
 
 /* ---------------------------------------------------------------------------
@@ -1621,18 +1355,6 @@ p {
    --------------------------------------------------------------------------- */
 
 @media (max-width: 860px) {
-  .bento {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .card {
-    grid-column: span 1;
-  }
-
-  .card-wide {
-    grid-column: span 2;
-  }
-
   .photo-stack {
     width: 190px;
     height: 240px;
@@ -1641,27 +1363,13 @@ p {
 }
 
 @media (max-width: 680px) {
-  .site-nav {
-    gap: 6px;
-  }
-
-  .header-controls {
-    flex: none;
-    margin-left: 8px;
-    position: static;
-  }
-
-  .brand-name {
-    display: none;
-  }
-
-  .nav-link {
-    padding: 6px 11px;
-    font-size: 0.875rem;
+  .nav-right,
+  .nav-links {
+    gap: 18px;
   }
 
   .page {
-    padding-top: 112px;
+    padding-top: 24px;
     padding-bottom: 88px;
   }
 
@@ -1670,39 +1378,20 @@ p {
   }
 
   .hero {
-    min-height: 0;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 56px;
-  }
-
-  .typed-line {
-    min-height: 3.2em;
-    font-size: 0.9375rem;
+    min-height: calc(100svh - 160px);
+    padding-top: 2vh;
   }
 
   .photo-stack {
     margin: 0 0 0 56px;
   }
 
-  .marquee {
-    margin-top: 64px;
-  }
-
-  .bento {
+  .project-rows a {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .card-wide {
-    grid-column: span 1;
-  }
-
-  .collage {
-    height: auto;
+  .photo-feature {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .collage-cell {
-    height: 220px;
   }
 
   .project {
@@ -1738,20 +1427,6 @@ p {
   }
 }
 
-@media (max-width: 480px) {
-  .header-controls {
-    margin-left: 0;
-    position: absolute;
-    top: 54px;
-    right: 12px;
-  }
-
-  .icon-button {
-    width: 40px;
-    height: 40px;
-  }
-}
-
 /* ---------------------------------------------------------------------------
    Animation. Everything here is skipped for visitors who ask their system
    for reduced motion.
@@ -1761,43 +1436,9 @@ p {
   html {
     scroll-behavior: auto;
   }
-
-  /* The strip cannot scroll, so show the list once, wrapped. */
-  .marquee {
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-
-  .marquee-track {
-    width: auto;
-    display: block;
-  }
-
-  .marquee-group {
-    flex-wrap: wrap;
-    row-gap: 8px;
-  }
-
-  .marquee-group[aria-hidden="true"] {
-    display: none;
-  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* Hidden until motion.ts sees them scroll into view. */
-  [data-reveal] {
-    opacity: 0;
-    transition:
-      opacity 0.8s ease,
-      transform 0.8s var(--ease-out);
-    transform: translateY(22px);
-  }
-
-  [data-reveal].is-visible {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
   .mist-a {
     animation: mist-a 40s ease-in-out infinite alternate;
   }
@@ -1826,40 +1467,62 @@ p {
     animation: fall 16s linear infinite;
   }
 
-  .hero-name,
   .page:has(.not-found) .page-header h1 {
     animation: sheen 9s ease-in-out infinite alternate;
-  }
-
-  .status-badge::before {
-    animation: pulse 1.8s ease-in-out infinite;
-  }
-
-  .typed-caret {
-    animation: caret-blink 1.1s steps(1) infinite;
-  }
-
-  .marquee-track {
-    animation: marquee 40s linear infinite;
-  }
-
-  .marquee:hover .marquee-track {
-    animation-play-state: paused;
   }
 
   .lightbox[open] .lightbox-figure {
     animation: lightbox-in 0.35s var(--ease-out);
   }
 
-  .lightbox[open]::backdrop {
-    animation: fade-in 0.3s ease;
+  /* When scrolling the photography page changes the season, the land fades
+     into its new colours instead of switching at once. Not during the
+     buttons' circle reveal, and not on the walk, whose colours already
+     follow the scroll. */
+  :root:not([data-walk], .theme-switching) .landscape :is(path, rect) {
+    transition: fill 1.2s ease;
+  }
+
+  /* The walk: on pages that ask for it (the home page, `walk` on the
+     layout), scrolling down passes the time of day. By day the page goes
+     from morning to golden hour, by night from dusk to just before dawn.
+     Text colours never change, only the sky and the land. */
+  [data-walk] .backdrop {
+    animation:
+      walk-orb 1s linear both,
+      walk-night 1s linear both;
+  }
+
+  [data-walk][data-theme="day"] .backdrop {
+    animation-name: walk-orb, walk-day;
+  }
+
+  [data-walk] .sun,
+  [data-walk] .moon {
+    top: var(--orb-y);
+    left: var(--orb-x);
+    right: auto;
+    translate: -50% -50%;
   }
 
   @supports (animation-timeline: scroll()) {
-    .scroll-progress {
-      animation: progress linear both;
-      animation-timeline: scroll(root);
+    [data-walk] .backdrop {
+      animation-timeline: scroll(root), scroll(root);
     }
+  }
+
+  /* Elsewhere (Firefox, for now) the animation stays paused, and scene.ts
+     sets --walk (0 at the top, 1 at the bottom) as the page scrolls. Without
+     JavaScript it stays where the page starts: morning, or dusk. */
+  @supports not (animation-timeline: scroll()) {
+    [data-walk] .backdrop {
+      animation-play-state: paused;
+      animation-delay: calc(var(--walk, 0) * -0.999s);
+    }
+  }
+
+  .lightbox[open]::backdrop {
+    animation: fade-in 0.3s ease;
   }
 }
 
@@ -1910,34 +1573,74 @@ p {
   }
 }
 
-@keyframes sheen {
-  to {
-    background-position: 100% 0;
+/* The sun or moon rises from behind the hills on the left, peaks mid-page
+   and sets behind them on the right. */
+@keyframes walk-orb {
+  0% {
+    --orb-x: 6%;
+    --orb-y: 80%;
   }
-}
-
-@keyframes pulse {
+  25% {
+    --orb-x: 28%;
+    --orb-y: 20%;
+  }
   50% {
-    opacity: 0.3;
-    transform: scale(0.7);
+    --orb-x: 50%;
+    --orb-y: 12%;
+  }
+  75% {
+    --orb-x: 72%;
+    --orb-y: 20%;
+  }
+  100% {
+    --orb-x: 94%;
+    --orb-y: 80%;
   }
 }
 
-@keyframes caret-blink {
-  50% {
-    opacity: 0;
+/* Morning, midday, golden hour. */
+@keyframes walk-day {
+  0% {
+    --warm: 0.8;
+    --eve: 0;
+  }
+  35%,
+  65% {
+    --warm: 0;
+  }
+  35% {
+    --eve: 0;
+  }
+  65% {
+    --eve: 1;
+  }
+  100% {
+    --warm: 1;
+    --eve: 1;
   }
 }
 
-@keyframes marquee {
-  to {
-    transform: translateX(-50%);
+/* Dusk, deep night, the blue before dawn. */
+@keyframes walk-night {
+  0% {
+    --lift: 1.9;
+    --horizon: rgba(214, 122, 72, 0.42);
+    --stars: 0.2;
   }
-}
-
-@keyframes progress {
-  to {
-    transform: scaleX(1);
+  30% {
+    --lift: 1;
+    --horizon: rgba(140, 78, 96, 0);
+    --stars: 1;
+  }
+  70% {
+    --lift: 1;
+    --horizon: rgba(70, 100, 150, 0);
+    --stars: 1;
+  }
+  100% {
+    --lift: 1.5;
+    --horizon: rgba(84, 118, 168, 0.34);
+    --stars: 0.4;
   }
 }
 

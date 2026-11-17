@@ -17,6 +17,11 @@ interface Props {
   lead?: string;
   /** Summary for search results and link previews. */
   description?: string;
+  /**
+   * Scrolling down passes the time of day in the backdrop (morning to golden
+   * hour by day, dusk to dawn by night). The home page only.
+   */
+  walk?: boolean;
 }
 
 const {
@@ -24,6 +29,7 @@ const {
   heading,
   lead,
   description = "Kevin Lin's projects and photography.",
+  walk = false,
 } = Astro.props;
 const title = heading ? `${heading} | ${siteName}` : siteName;
 
@@ -33,7 +39,7 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-walk={walk ? "" : undefined}>
   <head>
     <meta charset="UTF-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
@@ -94,8 +100,7 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
         // A new landscape on every page load (including reloads). It is kept
         // in memory, so it stays the same while the visitor clicks between
         // pages, which swap the page without reloading it.
-        window.__scene ??=
-          scenes[Math.floor(Math.random() * scenes.length)];
+        window.__scene ??= scenes[Math.floor(Math.random() * scenes.length)];
 
         const apply = () => {
           const now = new Date();
@@ -138,14 +143,9 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
       type="image/x-icon"
     />
     <link href="/assets/tokyo_pfp.png" rel="apple-touch-icon" />
-    <!-- Reveal animations need JS; without it, show everything. -->
     <noscript>
       <style>
-        [data-reveal] {
-          opacity: 1 !important;
-          transform: none !important;
-        }
-        /* The season and day/night buttons need JS too. */
+        /* The season and day/night buttons need JS. */
         .header-controls {
           display: none !important;
         }
@@ -155,7 +155,6 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
   <body>
     <!-- Kept across navigations so its animations do not restart. -->
     <Backdrop />
-    <div class="scroll-progress" aria-hidden="true"></div>
 
     <SiteHeader current={current} />
 
@@ -163,12 +162,8 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
       {
         heading && (
           <header class="page-header">
-            <h1 data-reveal>{heading}</h1>
-            {lead && (
-              <p class="lead" data-reveal>
-                {lead}
-              </p>
-            )}
+            <h1>{heading}</h1>
+            {lead && <p class="lead">{lead}</p>}
           </header>
         )
       }
@@ -178,26 +173,10 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
     <SiteFooter />
 
     <script>
-      import {
-        setupCardGlow,
-        setupReveal,
-        setupSpotlight,
-      } from "../scripts/motion";
-      import { setupSceneControls } from "../scripts/scene";
+      import { setupSceneControls, setupWalkFallback } from "../scripts/scene";
 
       setupSceneControls();
-
-      let cleanups: (() => void)[] = [];
-      const cleanup = () => {
-        cleanups.forEach((fn) => fn());
-        cleanups = [];
-      };
-
-      document.addEventListener("astro:page-load", () => {
-        cleanup();
-        cleanups = [setupReveal(), setupSpotlight(), setupCardGlow()];
-      });
-      document.addEventListener("astro:before-swap", cleanup);
+      setupWalkFallback();
     </script>
 
 

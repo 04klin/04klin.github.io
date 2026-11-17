@@ -1,95 +1,96 @@
+# Shown in ascending `order`. `context` is a few words on where a project
+# came from; `about` is a sentence or two on what makes it interesting. Both
+# are optional: a project with little to say can be just its title, tech and
+# links.
+
 - id: space-rover-mission
   order: 1
-  title: "Open Liberty Space Rover Mission"
-  desc:
-    - "IBM's open-source IoT game: players steer a physical rover across a game board with hand gestures, backed by Java microservices on Open Liberty"
-    - "Working on a free roam mode to add to the existing game modes; contributions in progress"
+  title: Space Rover Mission
+  context: IBM, Open Liberty
+  about: >-
+    An open-source game where you steer a real rover across a game board with
+    hand gestures, run by Java microservices. I'm adding a free roam mode.
   links:
-    - text: "View the repository →"
+    - text: Repository
       url: "https://github.com/OpenLiberty/space-rover-mission"
   tech: [Java, Open Liberty, Jakarta EE, MicroProfile, React, OpenCV, Arduino]
 
 - id: openmt
   order: 2
-  title: "OpenMT: A Self-Hosted Media Tracker"
-  desc:
-    - "Self-hosted, multi-user tracker for anime, manga, manhwa, TV, movies and books"
-    - "One search across AniList, TMDB, MangaUpdates and Open Library, with result ranking and duplicate detection"
-    - "Discovery page with trending and upcoming shelves, cached per list and refreshed daily"
-    - "Optimistic updates with undo, multiple themes, and scripted deploys with backups and rollback"
+  title: OpenMT
+  context: Side project
+  about: >-
+    A self-hosted tracker for anime, manga, manhwa, TV, movies and books. One
+    search covers AniList, TMDB, MangaUpdates and Open Library at once, and a
+    discovery page keeps up with what's trending and what's coming out.
   tech: [Next.js, React, TypeScript, SQLite, Drizzle, TanStack Query, Tailwind]
 
 - id: quote-bot
   order: 3
-  title: "Discord Quote Bot & Quotehoot"
-  desc:
-    - "Discord bot that turns a server's quote channels into a reviewed, searchable quote catalog"
-    - "Who Said?: guess which member said a random quote, with weekly and all-time leaderboards"
-    - 'Quotehoot: a live, Kahoot-style "who said it?" quiz played on phones over WebSockets'
-    - "Posts a Quote of the Day and a weekly champion on a schedule; quotes are approved in a local moderation dashboard first"
+  title: Quote Bot and Quotehoot
+  context: Side project
+  about: >-
+    A Discord bot that turns a server's quote channels into a searchable
+    archive, then makes games out of it: guess who said a random quote, or
+    play Quotehoot, a live Kahoot-style "who said it?" quiz on your phone.
   tech: [Node.js, TypeScript, Express, SQLite, WebSockets, Podman]
 
 - id: self-driving-cars
   order: 4
-  title: Self Driving Cars
-  desc:
-    - "Implemented lane following using a color mask, blob detection, and CTE calculations"
-    - "Added stop sign detection with YOLO"
+  title: Self-Driving Car
+  context: Coursework
+  about: Lane following, and stopping at stop signs it spots with YOLO.
   links:
-    - text: "View the Demo Playlist →"
+    - text: Demo videos
       url: "https://www.youtube.com/playlist?list=PLnUax5602s6aKakl6MddQApi4Lxbcdk1r"
-  tech: [Python, YOLO, ROS2, CV2]
+  tech: [Python, YOLO, ROS2, OpenCV]
 
 - id: repo-replay
   order: 5
-  title: "Repo Replay: A GitHub Commit History Replay Tool"
-  desc:
-    - "Problem: Teaching staff spends lots of time navigating code to understand what students have tried on their assignments"
-    - "Solution: Web app to simplify stepping through commit history of a specific file"
-    - "Architected a system able to handle over 20 concurrent users and over 2000 repositories per user"
-    - "Designed and implemented endpoints and UI components for the file explorer and branch dropdown functionality"
+  title: Repo Replay
+  context: Coursework
+  about: >-
+    Plays back the commit history of a single file, so teaching staff can see
+    what a student tried on an assignment without digging through the code.
   links:
-    - text: "View the Poster →"
+    - text: Poster
       url: "/assets/poster_and_pies.png"
-    - text: "View the demo video →"
+    - text: Demo video
       url: "https://youtu.be/H1HVZ4pPBGg"
-    - text: "View the source code →"
+    - text: Source code
       url: "https://github.com/04klin/repo-replay"
   tech: [React, TypeScript, Spring, Java, PostgreSQL, Docker, Tailwind]
 
 - id: bfs-paper
   order: 6
-  title: "University: Final Paper on BFS Algorithms"
-  desc:
-    - "Performance analysis of BFS algorithms"
-    - "Compared top-down, bottom-up, and hybrid (direction optimizing) algorithms"
-    - "Tested variable number of threads, datasets, and impl. (atomic ops vs critical sections)"
-    - "Found up to 16x speed up using the top-down atomic algo with 16 cores on a dense dataset compared to a top-down critical section algorithm"
+  title: Parallel Breadth-First Search
+  context: Coursework
+  about: >-
+    How much faster can breadth-first search get on 16 cores? I compared
+    top-down, bottom-up and hybrid versions. On a dense graph, atomic
+    operations beat critical sections by up to 16x.
   links:
-    - text: "View my paper →"
+    - text: Paper
       url: "/assets/kevin_lin_final_paper_parallel_bfs_algorithms_and_optimizations.pdf"
   tech: [OpenMP, C++, Shell]
 
 - id: liquid-rocketry-mission-control
   order: 7
-  title: "Liquid Rocketry Lab: Mission Control"
-  desc:
-    - "Led a team of 4 to maintain and develop new features for the mission control platform"
-    - "Led the development of a feature to monitor 10+ unique events, improving real-time data visibility"
-    - "Enhanced 10+ UI components which contribute to safer tests"
-    - "Redesigned backend event handler architecture to decrease code complexity"
+  title: Mission Control
+  context: Liquid Rocketry Lab
+  about: >-
+    The software the lab runs its rocket tests from. I led a team of four on
+    it.
   links:
-    - text: "View the club →"
+    - text: Lab website
       url: "https://liquidrocketry.com"
   tech: [React, Flask, Docker, MongoDB]
 
 - id: breaking-legs
   order: 8
-  title: "Game Jam: Breaking Legs"
-  desc:
-    - "Co-built a 2d platform game in the endless run genre"
-    - "Implemented UI functionality, map generation, player movement, and enemy spawn generation"
+  title: Breaking Legs
+  context: Game jam
   links:
-    - text: "View our game →"
+    - text: Play it on itch.io
       url: "https://unstable-groot.itch.io/breaking-legs"
   tech: [Unity, "C#"]

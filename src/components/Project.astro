@@ -6,38 +6,30 @@ type Props = CollectionEntry<"projects">["data"] & {
   id: string;
 };
 
-const { id, title, status, desc, links, tech } = Astro.props;
+const { id, title, context, status, about, links, tech } = Astro.props;
 ---
 
-<article class="project" id={id} data-reveal>
+<article class="project" id={id}>
   <div class="project-aside">
     <h2>{title}</h2>
-    {status && <span class="status-badge">{status}</span>}
+    {context && <p class="project-context">{context}</p>}
+    {status && <p class="status">{status}</p>}
   </div>
 
   <div class="project-body">
-    <ul class="project-desc">
-      {desc.map((item) => <li>{item}</li>)}
-    </ul>
+    {about && <p class="project-about">{about}</p>}
 
-    <div class="chips">
-      {tech.map((techItem) => <span class="chip">{techItem}</span>)}
-    </div>
+    <p class="tech">{tech.join(", ")}</p>
 
     {
       links.length > 0 && (
-        <div class="button-row">
+        <p class="link-row">
           {links.map((link) => (
-            <a
-              href={link.url}
-              class="button"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={link.url} target="_blank" rel="noopener noreferrer">
               {link.text}
             </a>
           ))}
-        </div>
+        </p>
       )
     }
   </div>

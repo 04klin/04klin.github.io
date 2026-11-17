@@ -10,7 +10,10 @@ const projects = defineCollection({
     /** Optional badge next to the title, e.g. "In progress". */
     status: z.string().optional(),
     title: z.string(),
-    desc: z.array(z.string()),
+    /** A few words on where it came from, e.g. "Coursework". */
+    context: z.string().optional(),
+    /** A sentence or two on what makes it interesting. */
+    about: z.string().optional(),
     links: z.array(z.object({ text: z.string(), url: z.string() })).default([]),
     tech: z.array(z.string()),
   }),

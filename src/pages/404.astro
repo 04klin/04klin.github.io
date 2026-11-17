@@ -7,13 +7,13 @@ import mntFuji from "../assets/photography/mnt_fuji.jpg";
 <!-- GitHub Pages serves the built 404.html for any path that does not exist. -->
 <Layout heading="404" lead="This page wandered off the trail.">
   <section class="not-found">
-    <div class="button-row" data-reveal>
-      <a href="/" class="button button-primary">Take me home</a>
-      <a href="/projects" class="button">Projects</a>
-      <a href="/photography" class="button">Photography</a>
-    </div>
+    <p class="link-row">
+      <a href="/">Take me home</a>
+      <a href="/projects">Projects</a>
+      <a href="/photography">Photography</a>
+    </p>
 
-    <figure class="not-found-photo" data-reveal>
+    <figure class="not-found-photo">
       <Image
         src={mntFuji}
         alt="Mt. Fuji, mostly hidden by clouds"
@@ -22,9 +22,7 @@ import mntFuji from "../assets/photography/mnt_fuji.jpg";
         fit="cover"
         loading="eager"
       />
-      <figcaption class="mini-label">
-        Searched up here too. Nothing but clouds.
-      </figcaption>
+      <figcaption>Searched up here too. Nothing but clouds.</figcaption>
     </figure>
   </section>
 </Layout>
