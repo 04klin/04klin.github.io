@@ -1,0 +1,129 @@
+---
+/*
+ * The Photos app (scripts/photos.ts): a gallery in its own window. Albums
+ * down the side; the chosen album's photos as a grid; a click on one shows
+ * it large in the viewer, which steps through the album. The terminal opens
+ * it too, when a photo is opened there.
+ */
+import { Image } from "astro:assets";
+import { photo } from "../photos";
+import Window from "./Window.astro";
+
+interface Props {
+  albums: {
+    dir: string;
+    date: string;
+    season: string | null;
+    link: string | null;
+    photos: { name: string; alt: string; full: string }[];
+  }[];
+}
+
+const { albums } = Astro.props;
+
+function formatDate(date: string) {
+  const [year, month] = date.split("-");
+  if (!month) return year;
+  return new Date(Number(year), Number(month) - 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+const count = (n: number) => `${n} photo${n === 1 ? "" : "s"}`;
+---
+
+<Window app="photos" title="Photos">
+  <div class="photos" data-photos={JSON.stringify(albums)}>
+    <nav class="photos-sidebar" aria-label="Albums">
+      <p class="photos-heading">Albums</p>
+      {
+        albums.map((album) => (
+          <button
+            type="button"
+            class="photos-album"
+            data-show-album={album.dir}
+          >
+            <span class="photos-album-name">{album.dir}</span>
+            <span class="photos-meta">
+              {formatDate(album.date)} · {album.photos.length}
+            </span>
+          </button>
+        ))
+      }
+    </nav>
+
+    <div class="photos-main" data-photos-main>
+      {
+        albums.map((album) => (
+          <section class="photos-album-view" data-album-view={album.dir} hidden>
+            <header class="photos-album-head">
+              <h2>{album.dir}</h2>
+              <p class="photos-meta">
+                {formatDate(album.date)} · {count(album.photos.length)}
+                {album.link && (
+                  <>
+                    {" · "}
+                    <a
+                      href={album.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Full album
+                    </a>
+                  </>
+                )}
+              </p>
+            </header>
+            <ul class="photos-thumbs">
+              {album.photos.map((p, i) => (
+                <li>
+                  <button
+                    type="button"
+                    class="photos-thumb"
+                    data-view={i}
+                    data-album={album.dir}
+                    aria-label={`View ${p.name}: ${p.alt}`}
+                  >
+                    <Image
+                      src={photo(p.name)}
+                      alt={p.alt}
+                      width={480}
+                      height={320}
+                      fit="cover"
+                    />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      }
+    </div>
+
+    <!-- One photo, large. Esc or the back button returns to the album. -->
+    <figure class="photos-viewer" data-viewer hidden>
+      <button
+        type="button"
+        class="viewer-button viewer-back"
+        data-viewer-action="back"
+        aria-label="Back to the album">&larr;</button
+      >
+      <div class="spinner" data-viewer-spinner></div>
+      <img data-viewer-img alt="" hidden />
+      <figcaption data-viewer-caption></figcaption>
+      <button
+        type="button"
+        class="viewer-button viewer-prev"
+        data-viewer-action="prev"
+        aria-label="Previous photo">&lsaquo;</button
+      >
+      <button
+        type="button"
+        class="viewer-button viewer-next"
+        data-viewer-action="next"
+        aria-label="Next photo">&rsaquo;</button
+      >
+    </figure>
+  </div>
+</Window>

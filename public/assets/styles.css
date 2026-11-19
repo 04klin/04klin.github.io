@@ -20,7 +20,12 @@
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
-  --nav-bg: rgba(18, 19, 18, 0.72);
+  /* The terminal window's glass, a soft shadow for text right on the
+     landscape (the desktop icon's label), and error lines. */
+  --panel: rgba(12, 15, 13, 0.8);
+  --panel-solid: #111412;
+  --text-glow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  --err: #e8a07a;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --radius: 6px;
@@ -44,7 +49,10 @@
   --accent: #3c7a28;
   --accent-rgb: 60, 122, 40;
 
-  --nav-bg: rgba(255, 255, 255, 0.72);
+  --panel: rgba(248, 250, 246, 0.82);
+  --panel-solid: #f5f7f2;
+  --text-glow: 0 0 4px rgba(255, 255, 255, 0.75);
+  --err: #a5452a;
 }
 
 /* ---------------------------------------------------------------------------
@@ -287,6 +295,15 @@ p {
   );
   --mist: 200, 222, 210;
   --mist-strength: 0.07;
+  /* Depth: the haze that distance fades into, the faint range behind the
+     main one, and the shadow on the faces and trees turned from the light
+     (the moon's, by night). */
+  --haze: color-mix(in srgb, var(--far) 82%, #9fb8b0);
+  --fog-strength: 0.55;
+  --back: color-mix(in srgb, var(--far), var(--haze) 45%);
+  --shade-color: #000;
+  --shade-strength: 0.28;
+  --near-dark: 0.4;
 
   z-index: -1;
   pointer-events: none;
@@ -366,6 +383,16 @@ p {
   );
   --mist: 255, 255, 255;
   --mist-strength: 0.45;
+  --haze: color-mix(
+    in srgb,
+    var(--sky-bottom),
+    var(--tint) calc(var(--warm) * 58%)
+  );
+  --fog-strength: 0.7;
+  --back: color-mix(in srgb, var(--far), var(--haze) 50%);
+  --shade-color: #2a4150;
+  --shade-strength: 0.16;
+  --near-dark: 0.2;
 }
 
 .sky-day {
@@ -445,14 +472,56 @@ p {
 }
 
 /* Only the chosen landscape is shown; mountains without JavaScript. */
+/* A little wider than the screen, overhanging both edges. */
 .landscape {
-  width: 100%;
+  width: calc(100% + 80px);
   height: 48vh;
   min-height: 260px;
   display: none;
   position: absolute;
   bottom: 0;
-  left: 0;
+  left: -40px;
+}
+
+.landscape-defs {
+  position: absolute;
+}
+
+.landscape .back {
+  fill: var(--back);
+}
+
+/* The slopes and the halves of trees turned away from the light. */
+.landscape .shade,
+.landscape .tree-shade {
+  fill: var(--shade-color);
+  opacity: var(--shade-strength);
+}
+
+.landscape .tree-shade {
+  opacity: calc(var(--shade-strength) * 0.8);
+}
+
+/* Fog pooling at the foot of each layer, so distance fades into the sky. */
+.fog-stop {
+  stop-color: var(--haze);
+}
+
+.fog-thick {
+  stop-opacity: var(--fog-strength);
+}
+
+/* The nearest ground darkens towards the bottom edge. */
+.near-stop {
+  stop-color: var(--night);
+}
+
+.near-dark {
+  stop-opacity: var(--near-dark);
+}
+
+.landscape .near-shade {
+  fill: url(#near-shade);
 }
 
 :root:not([data-scene]) .landscape-mountains,
@@ -540,6 +609,16 @@ p {
 }
 
 /* Fireflies come out on summer nights. */
+/* The weather (Backdrop.astro): in front of the page, never in the way of
+   clicks. */
+.weather {
+  z-index: 2;
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
 .fireflies {
   display: none;
 }
@@ -625,194 +704,12 @@ p {
   visibility: hidden;
 }
 
-/* The day/night button shows what a click switches to: the sun at night,
-   the moon by day. The season button shows the current season. */
-.theme-toggle .icon-sun,
-[data-theme="day"] .theme-toggle .icon-moon,
-:root:not([data-season]) .season-toggle .icon-summer,
-[data-season="spring"] .season-toggle .icon-spring,
-[data-season="summer"] .season-toggle .icon-summer,
-[data-season="autumn"] .season-toggle .icon-autumn,
-[data-season="winter"] .season-toggle .icon-winter {
-  display: block;
-}
-
-[data-theme="day"] .theme-toggle .icon-sun {
-  display: none;
-}
-
-/* While the theme or season switches (scene.ts), the whole page is one
-   snapshot, and the change is revealed in a growing circle instead of a
-   crossfade. */
-.theme-switching .nav-mark {
-  view-transition-name: none;
-}
-
+/* While the theme, season or landscape switches (scene.ts), the whole page
+   is one snapshot, and the old scene crossfades slowly into the new one. */
 .theme-switching::view-transition-old(root),
 .theme-switching::view-transition-new(root) {
-  mix-blend-mode: normal;
-  animation: none;
-}
-
-/* The circle grows from the button that was pressed; scene.ts sets
-   --reveal-x, --reveal-y and --reveal-r. */
-.theme-switching::view-transition-new(root) {
-  animation: scene-reveal 0.7s var(--ease-out);
-}
-
-@keyframes scene-reveal {
-  from {
-    clip-path: circle(0 at var(--reveal-x) var(--reveal-y));
-  }
-  to {
-    clip-path: circle(var(--reveal-r) at var(--reveal-x) var(--reveal-y));
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Top bar and footer
-   --------------------------------------------------------------------------- */
-
-/* A plain row at the top of the page column: name on the left, links and
-   the two scene buttons on the right. It scrolls away with the page. */
-.site-header {
-  width: min(100% - 2 * var(--page-gutter), var(--page-width));
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px 24px;
-  margin: 0 auto;
-  padding: 28px 0;
-  display: flex;
-}
-
-.brand {
-  color: var(--text);
-  align-items: center;
-  gap: 10px;
-  font-weight: 500;
-  text-decoration: none;
-  display: flex;
-}
-
-.brand-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-}
-
-.brand:hover {
-  color: var(--accent);
-}
-
-.nav-right {
-  align-items: center;
-  gap: 28px;
-  display: flex;
-}
-
-.nav-links {
-  gap: 24px;
-  display: flex;
-}
-
-.nav-link {
-  color: var(--muted);
-  padding: 4px 0;
-  text-decoration: none;
-  transition: color 0.2s ease;
-  position: relative;
-}
-
-.nav-link:hover,
-.nav-link.is-current {
-  color: var(--text);
-}
-
-/* Underline under the current page. Its own element so it can slide
-   between links on navigation. */
-.nav-mark {
-  view-transition-name: nav-current;
-  height: 1px;
-  background-color: currentColor;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-}
-
-::view-transition-group(nav-current) {
-  animation-duration: 0.45s;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* The season and day/night buttons: bare icons, no chrome. */
-.header-controls {
-  gap: 4px;
-  display: flex;
-}
-
-.icon-button {
-  width: 32px;
-  height: 32px;
-  color: var(--muted);
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  justify-content: center;
-  align-items: center;
-  display: flex;
-  transition: color 0.2s ease;
-}
-
-.icon-button:hover {
-  color: var(--text);
-}
-
-.icon-button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.icon-button svg {
-  width: 18px;
-  height: 18px;
-  display: none;
-}
-
-.site-footer {
-  border-top: 1px solid var(--border);
-  margin-top: auto;
-  font-size: 0.875rem;
-}
-
-.footer-inner {
-  width: min(100% - 2 * var(--page-gutter), var(--page-width));
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 12px 24px;
-  margin: 0 auto;
-  padding: 28px 0 36px;
-  display: flex;
-}
-
-.footer-links {
-  gap: 24px;
-  display: flex;
-}
-
-.footer-inner a {
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.footer-inner > span a {
-  color: var(--text);
-}
-
-.footer-inner a:hover {
-  color: var(--accent);
+  animation-duration: 0.8s;
+  animation-timing-function: ease-in-out;
 }
 
 /* ---------------------------------------------------------------------------
@@ -823,40 +720,6 @@ p {
   width: min(100% - 2 * var(--page-gutter), var(--page-width));
   margin: 0 auto;
   padding: 48px 0 120px;
-}
-
-.page-header {
-  margin-bottom: 40px;
-}
-
-.lead {
-  max-width: 34em;
-  margin-top: 16px;
-  font-size: 1.125rem;
-}
-
-.section {
-  margin-top: 112px;
-}
-
-.section-heading {
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 16px;
-  margin-bottom: 24px;
-  display: flex;
-}
-
-.section-link {
-  color: var(--accent);
-  white-space: nowrap;
-  font-size: 0.9375rem;
-  text-decoration: none;
-}
-
-.section-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 /* A row of plain text links (project links, albums, the 404 page). */
@@ -885,130 +748,554 @@ p {
 }
 
 /* ---------------------------------------------------------------------------
-   Home: hero
+   Shell (Shell.astro): the terminal over the landscape
    --------------------------------------------------------------------------- */
 
-/* The greeting and photo pile sit at the top of a full-height first screen,
-   leaving the rest of it to the landscape. The page header and the page's
-   top padding take about 140px. */
-.hero {
-  min-height: calc(100svh - 140px);
-  padding-top: 4vh;
+/* The home page is a desktop: the landscape is the wallpaper, with the app
+   icons down the left and each app in its own window (Window.astro).
+   The page itself never scrolls; the terminal scrolls inside. */
+.page:has(.desktop) {
+  width: 100%;
+  padding: 0;
 }
 
-.hero h1 {
-  font-size: clamp(2.5rem, 6vw, 3.75rem);
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-}
-
-.hero-line {
-  margin-top: 16px;
-  font-size: 1.125rem;
-}
-
-/* ---------------------------------------------------------------------------
-   Home: photography
-   --------------------------------------------------------------------------- */
-
-/* The photo pile beside a line about where the photos come from. */
-.photo-feature {
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 40px 72px;
-  display: grid;
-}
-
-.photo-feature p {
-  max-width: 26em;
-  font-size: 1.125rem;
-}
-
-/* Three prints in a loose pile that fan out on hover. */
-
-.photo-stack {
-  width: 230px;
-  height: 290px;
-  margin: 0 64px 0 40px;
-  display: block;
+.desktop {
+  height: 100vh;
+  height: 100dvh;
   position: relative;
+  overflow: clip;
 }
 
-.stack-photo {
+/* The app icons, down the left. A click opens the app (or brings it back
+   when minimized). Windows stay clear of this column. */
+.desktop-icons {
+  flex-direction: column;
+  gap: 10px;
+  display: flex;
+  position: absolute;
+  top: 20px;
+  left: 16px;
+}
+
+/* The apps need JavaScript; without it only the terminal is there. */
+:root:not([data-js]) .desktop-icons,
+.desktop:has(.window[data-open][data-zoomed]) .desktop-icons {
+  visibility: hidden;
+}
+
+.desktop-icon {
+  width: 88px;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  display: flex;
+}
+
+.desktop-icon:hover,
+.desktop-icon:focus-visible {
+  background-color: rgba(var(--accent-rgb), 0.16);
+  outline: 0;
+}
+
+.app-icon {
+  width: 56px;
+  height: 56px;
+  color: #a3d977;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
+  background: linear-gradient(160deg, #2a2f2c, #121513);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 13px;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* Photos: a little landscape of its own, sun over hills. */
+.app-photos {
+  background: linear-gradient(170deg, #8cc4ea, #4f8fc0);
+  align-items: stretch;
+}
+
+.app-photos svg {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  background-color: #2b2b2b;
-  border: 4px solid #ededed;
-  border-radius: 8px;
-  transition: transform 0.7s var(--ease-out);
+}
+
+.app-photos circle {
+  fill: #ffd66b;
+}
+
+.app-photos path {
+  fill: #4c8a3e;
+}
+
+/* Settings: a gear (the teeth are a dashed ring). */
+.app-settings {
+  background: linear-gradient(160deg, #8d958f, #4f5652);
+}
+
+.app-settings svg {
+  width: 40px;
+  height: 40px;
+}
+
+.gear-teeth {
+  fill: none;
+  stroke: #e9ece8;
+  stroke-width: 5;
+  stroke-dasharray: 4.5 4.53;
+}
+
+.gear-body {
+  fill: #e9ece8;
+}
+
+.gear-hole {
+  fill: #5d655f;
+}
+
+.desktop-label {
+  font-size: 0.8125rem;
+  text-shadow: var(--text-glow);
+}
+
+/* A window: a title bar with the three lights, then the app. It sits
+   centred in the space right of the icons until it is dragged by its title
+   bar (data-placed, at --x and --y); "zoom" makes it fill the screen.
+   Closed or minimized, it is hidden. windows.ts sets z-index to stack them. */
+.window {
+  --left-room: 120px;
+  width: min(100% - 2 * var(--left-room), var(--page-width));
+  height: calc(100% - 80px);
+  background-color: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  flex-direction: column;
+  display: flex;
   position: absolute;
+  top: 40px;
+  left: 50%;
+  translate: -50% 0;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+/* Photos opens a little smaller, down and to the right of the terminal. Its
+   window is solid rather than glass: photos want a plain surface, and the
+   terminal's text would show through behind them. */
+.window[data-app="photos"] {
+  background-color: var(--panel-solid);
+  width: min(100% - 2 * var(--left-room) - 60px, 980px);
+  height: min(100% - 140px, 720px);
+  top: 90px;
+  left: calc(50% + 40px);
+}
+
+/* Settings: small, to the right, sized to its contents. */
+.window[data-app="settings"] {
+  width: min(100% - 2 * var(--left-room), 400px);
+  height: auto;
+  max-height: calc(100% - 140px);
+  background-color: var(--panel-solid);
+  top: 70px;
+  left: calc(50% + 200px);
+}
+
+/* With another app open as well, the terminal is solid too, so the window
+   behind it does not show through its text. */
+.desktop:has(.window:not([data-app="terminal"])[data-open])
+  .window[data-app="terminal"] {
+  background-color: var(--panel-solid);
+}
+
+.window[data-placed] {
+  top: var(--y);
+  left: var(--x);
+  translate: none;
+}
+
+[data-js] .window:not([data-open]) {
+  display: none;
+}
+
+.window[data-zoomed] {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
   top: 0;
   left: 0;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  translate: none;
 }
 
-.stack-photo:nth-child(1) {
-  transform: rotate(-12deg) translate(-36px, 10px);
-}
-
-.stack-photo:nth-child(2) {
-  transform: rotate(9deg) translate(34px, -2px);
-}
-
-.stack-photo:nth-child(3) {
-  transform: rotate(-2deg);
-}
-
-.photo-stack:hover .stack-photo:nth-child(1) {
-  transform: rotate(-19deg) translate(-78px, 10px);
-}
-
-.photo-stack:hover .stack-photo:nth-child(2) {
-  transform: rotate(17deg) translate(76px, 4px);
-}
-
-.photo-stack:hover .stack-photo:nth-child(3) {
-  transform: rotate(0deg) translateY(-12px) scale(1.04);
-}
-
-/* ---------------------------------------------------------------------------
-   Home: project list
-   --------------------------------------------------------------------------- */
-
-.project-rows {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.project-rows a {
-  border-top: 1px solid var(--border);
-  grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
-  gap: 4px 56px;
-  padding: 18px 0;
-  text-decoration: none;
-  display: grid;
-}
-
-.project-rows li:last-child a {
+/* Drag it to move the window. */
+.titlebar {
+  height: 34px;
+  touch-action: none;
   border-bottom: 1px solid var(--border);
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: relative;
+  user-select: none;
 }
 
-.project-row-title {
+.lights {
+  gap: 8px;
+  display: flex;
+  position: absolute;
+  left: 13px;
+}
+
+.light {
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+}
+
+.light-close {
+  background-color: #ff5f57;
+}
+
+.light-min {
+  background-color: #febc2e;
+}
+
+.light-zoom {
+  background-color: #28c840;
+}
+
+/* Without JavaScript the lights do nothing, so they are grey. */
+:root:not([data-js]) .light {
+  background-color: var(--border-strong);
+  cursor: default;
+}
+
+/* Long titles (Photos — album — file) end in an ellipsis clear of the
+   lights. */
+.window-title {
+  max-width: calc(100% - 180px);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.desktop .term {
+  min-height: 0;
+  flex-direction: column;
+  flex: 1;
+  padding: 0;
+  display: flex;
+}
+
+/* The text scrolls here. */
+.term-scroll {
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  flex: 1;
+  padding: 18px 22px 22px;
+  overflow-y: auto;
+}
+
+/* The login notice (/etc/motd) between two rules of "=", clipped to the
+   terminal's width. The greeting is its first line, the same size as the
+   rest. */
+.motd {
   color: var(--text);
 }
 
-.project-row-context {
+.motd-rule {
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.motd-greeting {
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: normal;
+  margin: 4px 0 8px;
+}
+
+.motd-rule:last-child {
+  margin-top: 4px;
+}
+
+/* The terminal's text: monospaced, in the window on the home page, on its
+   own panel on the 404 page. */
+.term {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  padding: 22px 26px;
+}
+
+/* Icons before names in listings (FileIcon.astro), drawn as masks in the
+   name's own colour: a folder, or a file by its extension. */
+.ls-icon {
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: -0.17em;
+  background-color: currentColor;
+  flex: none;
+  display: inline-block;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+[data-icon="dir"] {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M2.5 6.5c0-.8.7-1.5 1.5-1.5h5l2 2.2h9c.8 0 1.5.7 1.5 1.5v9.8c0 .8-.7 1.5-1.5 1.5H4c-.8 0-1.5-.7-1.5-1.5z'/%3E%3C/svg%3E");
+}
+
+[data-icon="text"] {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round' stroke-linecap='round'%3E%3Cpath d='M6 2.8h8.2L19 7.6v13.6H6z'/%3E%3Cpath d='M14 2.8v5h5M9 12.5h7M9 16.5h7'/%3E%3C/svg%3E");
+}
+
+[data-icon="pdf"] {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round' stroke-linecap='round'%3E%3Cpath d='M6 2.8h8.2L19 7.6v13.6H6z'/%3E%3Cpath d='M14 2.8v5h5'/%3E%3Cpath d='M4 12.5h11v5.5H4z' fill='black'/%3E%3C/svg%3E");
+}
+
+[data-icon="link"] {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z'/%3E%3C/svg%3E");
+}
+
+[data-icon="image"] {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round' stroke-linecap='round'%3E%3Crect x='3' y='4.5' width='18' height='15' rx='2'/%3E%3Cpath d='M3.5 17l5-5.5 4 4 2.5-2.5 5.5 5.5'/%3E%3Ccircle cx='15.5' cy='9' r='1.6'/%3E%3C/svg%3E");
+}
+
+/* A name with its icon: a fixed gap between them, whatever the spacing in
+   the markup. */
+.ls-dir,
+.ls-file,
+.tile-name {
+  align-items: center;
+  gap: 0.6ch;
+  display: inline-flex;
+}
+
+.ls-icon {
+  vertical-align: 0;
+}
+
+.tile-name .ls-icon {
   color: var(--faint);
 }
 
-.project-row-title .status {
-  margin-left: 10px;
+.term-block + .term-block,
+.term-input-line {
+  margin-top: 10px;
 }
 
-.project-rows a:hover .project-row-title {
+/* Spacing in what the script prints is kept, as in a terminal (help lines
+   up its columns). */
+.term-block > .term-line,
+.term-out,
+.term-dim,
+.term-err {
+  white-space: pre-wrap;
+}
+
+/* A prompt and the command typed after it. */
+.term-line {
+  color: var(--text);
+}
+
+.prompt-user {
   color: var(--accent);
+}
+
+.prompt-path {
+  font-weight: 500;
+}
+
+.term-dim {
+  color: var(--faint);
+}
+
+.term-err {
+  color: var(--err);
+}
+
+.term a {
+  color: var(--accent);
+  text-underline-offset: 4px;
+}
+
+.term-input-line {
+  gap: 1ch;
+  align-items: baseline;
+  display: flex;
+}
+
+.term-input-line[hidden] {
+  display: none;
+}
+
+.term-input {
+  min-width: 0;
+  color: inherit;
+  font: inherit;
+  caret-color: var(--accent);
+  caret-shape: block;
+  background: none;
+  border: 0;
+  outline: 0;
+  flex: 1;
+  padding: 0;
+}
+
+.term-input:focus-visible {
+  outline: 0;
+}
+
+/* `ls`: names in a wrapping row, like ls in a wide terminal. Folders are
+   accent green; files are underlined. Every name can be clicked. */
+.ls {
+  flex-wrap: wrap;
+  gap: 0 3ch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+}
+
+/* `ls -l`: permissions, photo count, date and name in columns. */
+.ls-long {
+  grid-template-columns: repeat(3, auto) minmax(0, 1fr);
+  gap: 0 2ch;
+  display: grid;
+}
+
+.ls-long li {
+  display: contents;
+}
+
+.ls-meta,
+.ls-dim {
+  color: var(--faint);
+}
+
+.ls-count {
+  text-align: right;
+}
+
+.ls-dir,
+.ls-file {
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-color: rgba(var(--accent-rgb), 0.5);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: text-decoration-color 0.2s ease;
+}
+
+.ls-dir {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration-color: transparent;
+}
+
+.ls-dir:hover,
+.ls-file:hover {
+  text-decoration-color: currentColor;
+}
+
+/* An album's photos as thumbnails, like a terminal that can show images.
+   A click opens the photo in the Photos app. */
+.tiles {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 12px 0 4px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+
+.tile {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: zoom-in;
+  background: none;
+  border: 0;
+  padding: 0;
+  display: block;
+}
+
+.tile img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: border-color 0.2s ease;
+}
+
+.tile:hover img {
+  border-color: var(--accent);
+}
+
+.tile-name {
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  display: flex;
+}
+
+/* Long file names end in an ellipsis. */
+.tile-text {
+  min-width: 0;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.tile:hover .tile-name {
+  color: var(--text);
+}
+
+/* The 404 page: a terminal on its own panel, a little way down the sky. */
+.term-404 {
+  max-width: 720px;
+  background-color: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  margin-top: 18vh;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 /* ---------------------------------------------------------------------------
@@ -1057,217 +1344,223 @@ p {
 }
 
 /* ---------------------------------------------------------------------------
-   Photography page
+   Settings app (SettingsApp.astro, scripts/settings.ts)
    --------------------------------------------------------------------------- */
 
-.photo-post {
-  margin-top: 80px;
+.settings {
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  padding: 16px 20px 18px;
+  overflow-y: auto;
 }
 
-.post-date {
-  color: var(--faint);
-  font-size: 0.875rem;
+.settings-group {
+  border: 0;
+  margin: 0 0 16px;
+  padding: 0;
 }
 
-.photo-post .link-row {
-  margin-top: 20px;
+.settings-group legend {
+  color: var(--muted);
+  margin-bottom: 6px;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.photo-post-header {
-  border-bottom: 1px solid var(--border);
-  justify-content: space-between;
+.settings-option {
+  cursor: pointer;
+  border-radius: 6px;
   align-items: baseline;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding-bottom: 14px;
+  gap: 10px;
+  padding: 4px 8px;
   display: flex;
 }
 
-.photo-post > p {
-  max-width: 40em;
-  margin-bottom: 20px;
+.settings-option:hover {
+  background-color: rgba(var(--accent-rgb), 0.1);
 }
 
-/* Several photos sit in one row that scrolls sideways. Each is a bit under
-   half the width, so the next one peeks in and shows there is more. */
-.photo-grid {
-  grid-auto-flow: column;
-  grid-auto-columns: 42%;
-  gap: 16px;
-  scroll-snap-type: x mandatory;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(var(--accent-rgb), 0.45) transparent;
-  /* Room for the hover lift above and the scrollbar below. */
-  padding: 6px 0 14px;
+.settings-option input {
+  accent-color: var(--accent);
+  margin: 0;
+  translate: 0 1px;
+}
+
+.settings-hint,
+.settings-note {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.settings-hint {
+  margin-left: auto;
+}
+
+.settings-note {
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Photos app (PhotosApp.astro, scripts/photos.ts): albums down the side,
+   the chosen album's photos as a grid, and a viewer for one photo.
+   --------------------------------------------------------------------------- */
+
+.photos {
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 210px minmax(0, 1fr);
   display: grid;
-  overflow-x: auto;
-}
-
-.photo-grid > .photo-button {
-  scroll-snap-align: start;
-}
-
-/* Two photos fit side by side, so there is nothing to scroll. */
-.photo-grid-pair {
-  grid-auto-columns: calc(50% - 8px);
-}
-
-.photo-grid-single {
-  grid-auto-columns: 100%;
-  padding: 0;
-  overflow: visible;
-}
-
-/* Arrows over the ends of a scrolling row, shown when hovering the row.
-   Touch screens swipe instead, so they never show there. */
-.photo-scroller {
   position: relative;
 }
 
-.photo-scroll-button {
-  z-index: 1;
-  width: 44px;
-  height: 44px;
+.photos-sidebar {
+  border-right: 1px solid var(--border);
+  scrollbar-width: thin;
+  padding: 14px 10px;
+  overflow-y: auto;
+}
+
+.photos-heading {
+  color: var(--muted);
+  margin: 0 10px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.photos-album {
+  width: 100%;
   color: var(--text);
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  background-color: var(--nav-bg);
-  border: 1px solid var(--border-strong);
-  border-radius: 50%;
-  justify-content: center;
-  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  margin-bottom: 2px;
+  padding: 7px 10px;
+  display: block;
+}
+
+.photos-album:hover,
+.photos-album:focus-visible {
+  background-color: rgba(var(--accent-rgb), 0.1);
+  outline: 0;
+}
+
+.photos-album[aria-current="true"] {
+  background-color: rgba(var(--accent-rgb), 0.2);
+}
+
+.photos-album-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  display: block;
+}
+
+.photos-meta {
+  color: var(--muted);
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.photos-main {
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+}
+
+.photos-album-head h2 {
+  margin: 0 0 2px;
+  font-size: 1.375rem;
+  font-weight: 600;
+}
+
+.photos-thumbs {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px;
+  margin: 16px 0 0;
   padding: 0;
-  font-size: 1.25rem;
-  line-height: 1;
-  display: flex;
-  position: absolute;
-  /* Centred on the photos, above the room left for the scrollbar. */
-  top: calc(50% - 26px);
-  opacity: 0;
-  transition:
-    opacity 0.25s ease,
-    border-color 0.3s ease;
+  list-style: none;
+  display: grid;
 }
 
-.photo-scroll-prev {
-  left: 12px;
-}
-
-.photo-scroll-next {
-  right: 12px;
-}
-
-.photo-scroll-button[hidden] {
-  display: none;
-}
-
-.photo-scroller:hover .photo-scroll-button,
-.photo-scroll-button:focus-visible {
-  opacity: 1;
-}
-
-.photo-scroller .photo-scroll-button:disabled {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.photo-scroll-button:hover {
-  border-color: var(--accent);
-}
-
-@media (hover: none) {
-  .photo-scroll-button {
-    display: none;
-  }
-}
-
-.photo-button {
+.photos-thumb {
+  width: 100%;
   aspect-ratio: 3 / 2;
-  cursor: zoom-in;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: 4px;
   padding: 0;
-  transition:
-    transform 0.5s var(--ease-out),
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
   display: block;
   overflow: hidden;
 }
 
-.photo-button img {
+.photos-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 1.2s var(--ease-out);
+  display: block;
 }
 
-.photo-button:hover {
-  border-color: rgba(var(--accent-rgb), 0.45);
+.photos-thumb:hover,
+.photos-thumb:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-/* Lightbox */
-
-.lightbox {
-  width: 100vw;
-  max-width: none;
-  height: 100vh;
-  height: 100dvh;
-  max-height: none;
-  color: var(--text);
-  background-color: rgba(0, 0, 0, 0);
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.lightbox[open] {
-  place-items: center;
-  display: grid;
-}
-
-.lightbox::backdrop {
-  background-color: rgba(5, 6, 5, 0.88);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-}
-
-.lightbox-figure {
-  width: 100%;
-  height: 100%;
+/* One photo, large, over the album (inside the window). */
+.photos-viewer {
+  z-index: 2;
+  background-color: rgba(8, 9, 8, 0.94);
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   margin: 0;
-  padding: 24px 72px;
+  padding: 52px 68px 16px;
   display: flex;
+  position: absolute;
+  inset: 0;
 }
 
-.lightbox-figure img {
+.photos-viewer[hidden],
+.photos-viewer img[hidden] {
+  display: none;
+}
+
+.photos-viewer img {
+  min-height: 0;
   max-width: 100%;
-  max-height: calc(100dvh - 120px);
+  max-height: 100%;
   object-fit: contain;
-  border-radius: 6px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+  flex: 0 1 auto;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 
-.lightbox-figure figcaption {
-  color: var(--muted);
+.photos-viewer figcaption {
+  color: #b9c0b8;
   text-align: center;
   font-family: var(--font-mono);
+  flex: none;
   font-size: 0.8125rem;
 }
 
-.lightbox-button {
+.viewer-button {
   z-index: 1;
-  width: 44px;
-  height: 44px;
-  color: var(--text);
+  width: 40px;
+  height: 40px;
+  color: #eef1ec;
   cursor: pointer;
   background-color: rgba(30, 31, 30, 0.8);
-  border: 1px solid var(--border-strong);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 50%;
   justify-content: center;
   align-items: center;
@@ -1281,31 +1574,31 @@ p {
   position: absolute;
 }
 
-.lightbox-button[hidden] {
+.viewer-button[hidden] {
   display: none;
 }
 
-.lightbox-button:hover {
+.viewer-button:hover {
   border-color: var(--accent);
   transform: scale(1.1);
 }
 
-.lightbox-close {
-  top: 16px;
-  right: 16px;
+.viewer-back {
+  top: 10px;
+  left: 12px;
 }
 
-.lightbox-prev,
-.lightbox-next {
-  top: calc(50% - 22px);
+.viewer-prev,
+.viewer-next {
+  top: calc(50% - 20px);
 }
 
-.lightbox-prev {
-  left: 16px;
+.viewer-prev {
+  left: 14px;
 }
 
-.lightbox-next {
-  right: 16px;
+.viewer-next {
+  right: 14px;
 }
 
 .spinner {
@@ -1322,76 +1615,117 @@ p {
 }
 
 /* ---------------------------------------------------------------------------
-   404 page
-   --------------------------------------------------------------------------- */
-
-/* The layout's <h1>, made big. */
-.page:has(.not-found) .page-header h1 {
-  font-size: clamp(6rem, 22vw, 12rem);
-  line-height: 1;
-  letter-spacing: -0.06em;
-}
-
-.not-found-photo {
-  margin: 56px 0 0;
-}
-
-.not-found-photo img {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 7 / 3;
-  object-fit: cover;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.not-found-photo figcaption {
-  margin-top: 12px;
-  font-size: 0.875rem;
-}
-
-/* ---------------------------------------------------------------------------
    Small screens
    --------------------------------------------------------------------------- */
 
-@media (max-width: 860px) {
-  .photo-stack {
-    width: 190px;
-    height: 240px;
-    margin: 0 48px 0 24px;
-  }
-}
-
 @media (max-width: 680px) {
-  .nav-right,
-  .nav-links {
-    gap: 18px;
-  }
-
   .page {
     padding-top: 24px;
     padding-bottom: 88px;
   }
 
-  .section {
-    margin-top: 80px;
+  /* The icons go in a row along the top, and every window fills the rest
+     of the screen (no dragging on phones). */
+  .desktop-icons {
+    flex-direction: row;
+    gap: 4px;
+    top: 6px;
+    left: 8px;
   }
 
-  .hero {
-    min-height: calc(100svh - 160px);
-    padding-top: 2vh;
+  .desktop-icon {
+    width: 68px;
+    gap: 3px;
+    padding: 4px;
   }
 
-  .photo-stack {
-    margin: 0 0 0 56px;
+  .app-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 16px;
   }
 
-  .project-rows a {
+  .desktop-label {
+    font-size: 0.6875rem;
+  }
+
+  .window,
+  .window[data-app="photos"],
+  .window[data-app="settings"],
+  .window[data-placed] {
+    width: calc(100% - 20px);
+    height: calc(100% - 92px);
+    top: 82px;
+    left: 10px;
+    translate: none;
+  }
+
+  .photos {
+    grid-template-rows: auto minmax(0, 1fr);
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .photo-feature {
-    grid-template-columns: minmax(0, 1fr);
+  /* The albums become a row to swipe through. */
+  .photos-sidebar {
+    border-bottom: 1px solid var(--border);
+    border-right: 0;
+    gap: 4px;
+    padding: 8px;
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .photos-heading {
+    display: none;
+  }
+
+  .photos-album {
+    width: auto;
+    white-space: nowrap;
+    flex: none;
+    margin: 0;
+  }
+
+  .photos-main {
+    padding: 14px;
+  }
+
+  .photos-thumbs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .photos-viewer {
+    padding: 56px 10px 64px;
+  }
+
+  .viewer-prev,
+  .viewer-next {
+    top: auto;
+    bottom: 12px;
+  }
+
+  .term {
+    padding: 14px 16px;
+    font-size: 0.8125rem;
+  }
+
+  .term-scroll {
+    padding: 14px 14px 18px;
+  }
+
+  /* No room for the permissions column. */
+  .ls-long {
+    grid-template-columns: repeat(2, auto) minmax(0, 1fr);
+  }
+
+  .ls-perm {
+    display: none;
+  }
+
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .project {
@@ -1402,29 +1736,95 @@ p {
   .project-aside {
     position: static;
   }
+}
 
-  .photo-post {
-    margin-top: 64px;
-  }
+/* ---------------------------------------------------------------------------
+   Boot screen: a shell-style intro on the first page of a visit
+   (BootScreen.astro). Only shown while <html> has data-boot.
+   --------------------------------------------------------------------------- */
 
-  .photo-grid,
-  .photo-grid-pair {
-    grid-auto-columns: 85%;
-  }
+.boot {
+  display: none;
+}
 
-  .photo-grid-single {
-    grid-auto-columns: 100%;
-  }
+[data-boot] .boot {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--page-gutter);
+  background-color: var(--bg);
+  cursor: default;
+}
 
-  .lightbox-figure {
-    padding: 72px 12px;
-  }
+.boot-term {
+  width: min(100%, 440px);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1.8;
+}
 
-  .lightbox-prev,
-  .lightbox-next {
-    top: auto;
-    bottom: 16px;
-  }
+.boot-line {
+  margin: 0;
+}
+
+.boot-user,
+.boot-ok {
+  color: var(--accent);
+}
+
+.boot-path,
+.boot-dim {
+  color: var(--faint);
+}
+
+.boot-ready {
+  color: var(--text);
+}
+
+/* Pixel loading bar: 20 cells of 8px, filled from --pct (0 to 100, in steps
+   of 5, so the fill always ends on a cell edge). */
+.boot-bar {
+  display: inline-block;
+  width: 166px;
+  height: 14px;
+  padding: 2px;
+  margin: 0 0.5ch;
+  vertical-align: -2px;
+  border: 1px solid var(--faint);
+}
+
+.boot-fill {
+  display: block;
+  width: calc(var(--pct) * 1.6px);
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--accent) 0 6px,
+    transparent 6px 8px
+  );
+}
+
+.boot-pct::after {
+  counter-reset: pct var(--pct);
+  content: counter(pct) "%";
+}
+
+.boot-cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.1em;
+  margin-left: 0.4ch;
+  vertical-align: text-bottom;
+  background-color: var(--accent);
+}
+
+/* The page waits, unseen, behind the boot screen. */
+:root[data-boot] .page {
+  visibility: hidden;
 }
 
 /* ---------------------------------------------------------------------------
@@ -1439,6 +1839,28 @@ p {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  /* Boot screen: each line appears at its --at time, the bar fills with a
+     couple of stalls, then the screen fades out at 2.6s (boot.ts removes it
+     when the fade ends). */
+  [data-boot] .boot {
+    animation: boot-out 0.4s ease 2.6s forwards;
+  }
+
+  [data-boot] .boot-line {
+    opacity: 0;
+    animation: boot-line 1ms linear var(--at) forwards;
+  }
+
+  [data-boot] .boot-line:has(.boot-bar) {
+    animation:
+      boot-line 1ms linear var(--at) forwards,
+      boot-load 0.85s linear var(--at) forwards;
+  }
+
+  [data-boot] .boot-cursor {
+    animation: boot-blink 1s steps(1) infinite;
+  }
+
   .mist-a {
     animation: mist-a 40s ease-in-out infinite alternate;
   }
@@ -1467,20 +1889,8 @@ p {
     animation: fall 16s linear infinite;
   }
 
-  .page:has(.not-found) .page-header h1 {
-    animation: sheen 9s ease-in-out infinite alternate;
-  }
-
-  .lightbox[open] .lightbox-figure {
-    animation: lightbox-in 0.35s var(--ease-out);
-  }
-
-  /* When scrolling the photography page changes the season, the land fades
-     into its new colours instead of switching at once. Not during the
-     buttons' circle reveal, and not on the walk, whose colours already
-     follow the scroll. */
-  :root:not([data-walk], .theme-switching) .landscape :is(path, rect) {
-    transition: fill 1.2s ease;
+  .photos-viewer img {
+    animation: viewer-in 0.35s var(--ease-out);
   }
 
   /* The walk: on pages that ask for it (the home page, `walk` on the
@@ -1505,24 +1915,14 @@ p {
     translate: -50% -50%;
   }
 
-  @supports (animation-timeline: scroll()) {
-    [data-walk] .backdrop {
-      animation-timeline: scroll(root), scroll(root);
-    }
-  }
-
-  /* Elsewhere (Firefox, for now) the animation stays paused, and scene.ts
-     sets --walk (0 at the top, 1 at the bottom) as the page scrolls. Without
-     JavaScript it stays where the page starts: morning, or dusk. */
-  @supports not (animation-timeline: scroll()) {
-    [data-walk] .backdrop {
-      animation-play-state: paused;
-      animation-delay: calc(var(--walk, 0) * -0.999s);
-    }
-  }
-
-  .lightbox[open]::backdrop {
-    animation: fade-in 0.3s ease;
+  /* The animation stays paused, and scene.ts (setupWalk) sets --walk: 0 at
+     the top of the terminal's scroll, 1 at the bottom. (Not a CSS scroll
+     timeline: one is inactive while there is nothing to scroll yet, which
+     would show midday instead of morning.) Without JavaScript it stays where
+     it starts: morning, or dusk. */
+  [data-walk] .backdrop {
+    animation-play-state: paused;
+    animation-delay: calc(var(--walk, 0) * -0.999s);
   }
 }
 
@@ -1644,21 +2044,63 @@ p {
   }
 }
 
-@keyframes lightbox-in {
+@keyframes viewer-in {
   from {
     opacity: 0;
     transform: scale(0.95);
   }
 }
 
-@keyframes fade-in {
-  from {
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The loading bar's progress, an integer so it can feed the % counter. */
+@property --pct {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@keyframes boot-load {
+  0% {
+    --pct: 0;
+    animation-timing-function: steps(6, end);
+  }
+  25% {
+    --pct: 30;
+    animation-timing-function: steps(2, end);
+  }
+  50% {
+    --pct: 40;
+    animation-timing-function: steps(9, end);
+  }
+  80% {
+    --pct: 85;
+    animation-timing-function: steps(3, end);
+  }
+  100% {
+    --pct: 100;
+  }
+}
+
+@keyframes boot-line {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes boot-blink {
+  50% {
     opacity: 0;
   }
 }
 
-@keyframes spin {
+@keyframes boot-out {
   to {
-    transform: rotate(360deg);
+    opacity: 0;
+    visibility: hidden;
   }
 }

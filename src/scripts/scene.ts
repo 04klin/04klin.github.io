@@ -1,5 +1,6 @@
 /*
- * The two buttons in the top bar that change the background scene.
+ * The background scene: the Settings app's choices, the shell's album
+ * seasons and the walk.
  *
  * Three attributes on <html> describe the scene, and the CSS draws it:
  *   data-theme   "night" or "day". Follows the visitor's own clock (day
@@ -7,12 +8,11 @@
  *   data-season  "spring", "summer", "autumn" or "winter". Follows the date
  *                (northern hemisphere).
  *   data-scene   which landscape is shown. Picked at random on every page
- *                load and kept while the visitor moves between pages; there
- *                is no button for it.
+ *                load and kept while the visitor moves between pages.
  *
- * A choice made with either button lasts for the visit only (sessionStorage,
- * cleared when the tab is closed), so the next visit follows the clock and
- * the calendar again.
+ * All three can be changed in the Settings app (settings.ts). A choice lasts for
+ * the visit only (sessionStorage, cleared when the tab is closed), so the
+ * next visit follows the clock and the calendar again.
  *
  * The inline script in the layout's <head> sets all three before the first
  * paint and again after each view transition swap (which replaces the <html>
@@ -21,27 +21,30 @@
 
 import { SEASONS, seasonOf, type Season } from "./seasons";
 
+declare global {
+  interface Window {
+    /** The landscape of this page load (set in the layout's <head>). */
+    __scene?: string;
+  }
+}
+
+/** The landscapes in Backdrop.astro, as in the layout's inline script. */
+export const SCENES = ["mountains", "river", "lake", "hills"] as const;
+
+/** The three <html> attributes that describe the scene. */
+export type ScenePart = "theme" | "season" | "scene";
+
 const root = document.documentElement;
-
-const currentTheme = () => (root.dataset.theme === "day" ? "day" : "night");
-
-const currentSeason = (): Season =>
-  SEASONS.find((s) => s === root.dataset.season) ?? "summer";
-
-const nextSeason = (): Season =>
-  SEASONS[(SEASONS.indexOf(currentSeason()) + 1) % SEASONS.length];
-
-const capitalise = (word: string) => word[0].toUpperCase() + word.slice(1);
 
 function save(storage: () => Storage, key: string, value: string) {
   try {
     storage().setItem(key, value);
   } catch {
-    // Storage can be unavailable (private mode); the buttons still work.
+    // Storage can be unavailable (private mode); the change still shows.
   }
 }
 
-/** The visitor's own season: chosen with the button, or today's. */
+/** The visitor's own season: chosen in Settings, or today's. */
 function ownSeason(): Season {
   let chosen: string | null = null;
   try {
@@ -56,116 +59,67 @@ function ownSeason(): Season {
   );
 }
 
-/** Keeps the buttons' labels in step with the scene. */
-function updateLabels() {
-  const theme = currentTheme() === "day" ? "night" : "day";
-  document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-    button.setAttribute("aria-label", `Switch to ${theme}`);
-    button.setAttribute("title", `Switch to ${theme}`);
-  });
-  const label = `${capitalise(currentSeason())}. Switch to ${nextSeason()}`;
-  document.querySelectorAll("[data-season-toggle]").forEach((button) => {
-    button.setAttribute("aria-label", label);
-    button.setAttribute("title", label);
-  });
-}
-
-/** The reveal currently playing, if any. */
+/** The crossfade currently playing, if any. */
 let running: ViewTransition | null = null;
 
 /**
- * Applies a change to the scene. Where view transitions are supported, the
- * new scene spreads out in a circle from the button that was pressed.
+ * Applies a change to the scene (season, theme or landscape). Where view
+ * transitions are supported, the old scene crossfades into the new one.
+ * Resolves once the change is fully shown.
  */
-function changeScene(button: HTMLElement, apply: () => void) {
-  const update = () => {
-    apply();
-    updateLabels();
-  };
+function changeScene(apply: () => void): Promise<void> {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  // A click during a reveal finishes that reveal at once and applies the
+  // A change during a crossfade finishes that one at once and applies the
   // new change straight away. Starting a second transition would cut the
   // first one short and flash between scenes.
   if (!document.startViewTransition || reduced || running) {
     running?.skipTransition();
-    update();
-    return;
+    apply();
+    return Promise.resolve();
   }
 
-  // The circle itself is a CSS animation on ::view-transition-new(root)
-  // (see the stylesheet), so it is clipped from the very first frame. An
-  // animation started from script once the transition is ready can let one
-  // frame of the whole new scene through first, which flickers.
-  const rect = button.getBoundingClientRect();
-  const x = rect.left + rect.width / 2;
-  const y = rect.top + rect.height / 2;
-  const radius = Math.hypot(
-    Math.max(x, window.innerWidth - x),
-    Math.max(y, window.innerHeight - y),
-  );
-  root.style.setProperty("--reveal-x", `${x}px`);
-  root.style.setProperty("--reveal-y", `${y}px`);
-  root.style.setProperty("--reveal-r", `${radius}px`);
+  // The crossfade's timing is in the stylesheet, under .theme-switching.
   root.classList.add("theme-switching");
-
-  const transition = document.startViewTransition(update);
+  const transition = document.startViewTransition(apply);
   running = transition;
-  transition.finished.finally(() => {
-    running = null;
-    root.classList.remove("theme-switching");
-  });
-}
-
-/**
- * One listener on the document handles both buttons on every page, since the
- * top bar is replaced on each navigation but the document is not.
- */
-export function setupSceneControls() {
-  document.addEventListener("click", (event) => {
-    const target = event.target as Element;
-
-    const themeButton = target.closest<HTMLElement>("[data-theme-toggle]");
-    if (themeButton) {
-      const theme = currentTheme() === "day" ? "night" : "day";
-      changeScene(themeButton, () => {
-        root.dataset.theme = theme;
-        save(() => sessionStorage, "theme", theme);
-      });
-    }
-
-    const seasonButton = target.closest<HTMLElement>("[data-season-toggle]");
-    if (seasonButton) {
-      const season = nextSeason();
-      changeScene(seasonButton, () => {
-        root.dataset.season = season;
-        save(() => sessionStorage, "season", season);
-      });
-    }
-  });
-  document.addEventListener("astro:page-load", updateLabels);
+  return transition.finished
+    .catch(() => {})
+    .finally(() => {
+      running = null;
+      root.classList.remove("theme-switching");
+    });
 }
 
 /**
  * The walk (see the stylesheet): on the home page, scrolling down passes the
- * time of day. Browsers with scroll-driven animations do it in CSS alone;
- * elsewhere the animation is paused and moved along here, through --walk
- * (0 at the top of the page, 1 at the bottom).
+ * time of day. The animation is paused and moved along here, through --walk:
+ * 0 at the top, 1 at the bottom of the element marked data-walk-scroller
+ * (the shell's terminal, which scrolls inside the window), or of the page if
+ * there is none. Without content to scroll, it stays at 0.
  */
-export function setupWalkFallback() {
-  if (CSS.supports("animation-timeline: scroll()")) return;
-
+export function setupWalk() {
   let frame = 0;
   const update = () => {
     frame = 0;
-    const max = root.scrollHeight - window.innerHeight;
-    const progress = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+    const scroller = document.querySelector<HTMLElement>(
+      "[data-walk-scroller]",
+    );
+    const [top, max] = scroller
+      ? [scroller.scrollTop, scroller.scrollHeight - scroller.clientHeight]
+      : [window.scrollY, root.scrollHeight - window.innerHeight];
+    const progress = max > 0 ? Math.min(1, top / max) : 0;
     root.style.setProperty("--walk", progress.toFixed(4));
   };
   const schedule = () => {
     if (!frame) frame = requestAnimationFrame(update);
   };
 
-  window.addEventListener("scroll", schedule, { passive: true });
+  // Scroll events from elements do not bubble; listening in the capture
+  // phase catches the terminal's as well as the page's.
+  document.addEventListener("scroll", schedule, {
+    capture: true,
+    passive: true,
+  });
   window.addEventListener("resize", schedule);
   // Straight away, and after each view transition swap (which replaces the
   // <html> attributes, style included), so the sky never shows the wrong time.
@@ -173,43 +127,64 @@ export function setupWalkFallback() {
   document.addEventListener("astro:page-load", update);
 }
 
+/** What a part of the scene is when nothing was chosen. */
+function automatic(part: ScenePart): string {
+  const now = new Date();
+  if (part === "theme") {
+    const hour = now.getHours();
+    return hour >= 7 && hour < 19 ? "day" : "night";
+  }
+  if (part === "season")
+    return seasonOf(`${now.getFullYear()}-${now.getMonth() + 1}`)!;
+  // The landscape stays as it is; the next page load picks one at random.
+  return window.__scene ?? root.dataset.scene ?? SCENES[0];
+}
+
 /**
- * On the photography page each post carries the season it was taken in
- * (data-season-of). As the page scrolls, the backdrop shows the season of the
- * post at the middle of the screen; above the first post it shows the
- * visitor's own. Nothing is saved, so other pages are unaffected. Returns a
- * function that stops it.
+ * Sets the theme, season or landscape for the rest of the visit (the
+ * Settings app), saved in sessionStorage; the landscape is also kept in
+ * memory for view transition navigations. Null goes back to automatic (the
+ * clock, the calendar, a random landscape). The change crossfades in.
  */
-export function followPostSeasons() {
-  const posts = Array.from(
-    document.querySelectorAll<HTMLElement>("[data-season-of]"),
-  );
-  if (posts.length === 0) return () => {};
-
-  let frame = 0;
-  const update = () => {
-    frame = 0;
-    const middle = window.innerHeight / 2;
-    // The last post whose top has passed the middle of the screen.
-    const current = posts.filter(
-      (post) => post.getBoundingClientRect().top < middle,
-    );
-    const season = current.at(-1)?.dataset.seasonOf ?? ownSeason();
-    if (root.dataset.season !== season) {
-      root.dataset.season = season;
-      updateLabels();
+export function chooseScene(
+  part: ScenePart,
+  value: string | null,
+): Promise<void> {
+  if (value === null) {
+    try {
+      sessionStorage.removeItem(part);
+    } catch {
+      // Storage unavailable; nothing was saved.
     }
+  } else save(() => sessionStorage, part, value);
+  const shown = value ?? automatic(part);
+  if (part === "scene") window.__scene = shown;
+  if (root.dataset[part] === shown) return Promise.resolve();
+  const apply = () => {
+    root.dataset[part] = shown;
   };
-  const schedule = () => {
-    if (!frame) frame = requestAnimationFrame(update);
-  };
+  return changeScene(apply);
+}
 
-  window.addEventListener("scroll", schedule, { passive: true });
-  window.addEventListener("resize", schedule);
-  update();
-  return () => {
-    window.removeEventListener("scroll", schedule);
-    window.removeEventListener("resize", schedule);
-    cancelAnimationFrame(frame);
+/** The saved choice for a part of the scene, or null when automatic. */
+export function chosen(part: ScenePart): string | null {
+  try {
+    return sessionStorage.getItem(part);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Shows a season for a while without saving it: the shell's album folders
+ * take the season they were shot in. Null goes back to the visitor's own
+ * season. The change crossfades in. Resolves once the change is fully shown.
+ */
+export function showSeason(season: Season | null): Promise<void> {
+  const target = season ?? ownSeason();
+  if (root.dataset.season === target) return Promise.resolve();
+  const apply = () => {
+    root.dataset.season = target;
   };
+  return changeScene(apply);
 }

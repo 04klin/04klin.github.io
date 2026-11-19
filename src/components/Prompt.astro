@@ -1,0 +1,16 @@
+---
+import { shellHost } from "../site";
+
+interface Props {
+  host?: string;
+  path?: string;
+}
+
+const { host = shellHost, path = "~" } = Astro.props;
+---
+
+<span class="prompt"
+  ><span class="prompt-user">guest@{host}</span>:<span class="prompt-path"
+    >{path}</span
+  >$</span
+>

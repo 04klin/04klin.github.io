@@ -1,0 +1,82 @@
+---
+import { shellHost, siteVersion } from "../site";
+
+// "Astro v5.x.y", from the version that built the site.
+const astroVersion = Astro.generator.replace(/^Astro /, "");
+---
+
+<!--
+  A short shell-style intro on the first page of a visit, about three
+  seconds. It only shows when the inline script in the layout's <head> sets
+  `data-boot` on <html> (first page of the visit, motion allowed, JS on);
+  otherwise it stays hidden. Each line appears at its own `--at` time; the
+  output reports the visitor's own clock and the backdrop they actually got.
+  A click or key press skips it (scripts/boot.ts). It is decorative and
+  hidden from screen readers.
+-->
+<div class="boot" aria-hidden="true" data-boot-screen>
+  <div class="boot-term">
+    <p class="boot-line" style="--at: 0.1s">
+      <span class="boot-user">guest@{shellHost}</span><span class="boot-path"
+        >:~$</span
+      > ./hello
+    </p>
+    <p class="boot-line boot-dim" style="--at: 0.3s">
+      {shellHost}
+      {siteVersion} (astro {astroVersion})
+    </p>
+    <p class="boot-line boot-dim" style="--at: 0.4s" data-boot-date></p>
+    <p class="boot-line" style="--at: 0.6s">
+      <span class="boot-ok">[ ok ]</span> initializing
+    </p>
+    <p class="boot-line" style="--at: 0.8s">
+      <span class="boot-ok">[ ok ]</span> getting ducks in a row
+    </p>
+    <p class="boot-line" style="--at: 1s">
+      <span class="boot-ok">[ ok ]</span> scene:
+      <span data-boot-scene>mountains</span>
+    </p>
+    <p class="boot-line" style="--at: 1.1s">
+      <span class="boot-ok">[ ok ]</span> season:
+      <span data-boot-season>spring</span>
+    </p>
+    <p class="boot-line" style="--at: 1.2s">
+      <span class="boot-ok">[ ok ]</span> time of day:
+      <span data-boot-theme>night</span>
+    </p>
+    <p class="boot-line" style="--at: 1.35s">
+      booting <span class="boot-bar"><span class="boot-fill"></span></span>
+      <span class="boot-pct"></span>
+    </p>
+    <p class="boot-line boot-ready" style="--at: 2.3s">
+      ready.<span class="boot-cursor"></span>
+    </p>
+  </div>
+</div>
+
+<!-- Runs as the page is parsed, so the lines are filled before they show. -->
+<script is:inline>
+  (() => {
+    const root = document.documentElement;
+    if (!("boot" in root.dataset)) return;
+    const set = (name, value) => {
+      const el = document.querySelector(`[data-boot-${name}]`);
+      if (el && value) el.textContent = value;
+    };
+    set("scene", root.dataset.scene);
+    set("season", root.dataset.season);
+    set("theme", root.dataset.theme === "day" ? "day" : "night");
+
+    // Like `date`: Wed Nov 18 22:04:31 EST 2026
+    const now = new Date();
+    const [weekday, month, day, year] = now.toDateString().split(" ");
+    const zone = now
+      .toLocaleTimeString("en-US", { timeZoneName: "short" })
+      .split(" ")
+      .pop();
+    set(
+      "date",
+      `${weekday} ${month} ${day} ${now.toTimeString().slice(0, 8)} ${zone} ${year}`,
+    );
+  })();
+</script>

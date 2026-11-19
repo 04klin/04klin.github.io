@@ -1,0 +1,52 @@
+---
+/**
+ * A desktop window (scripts/windows.ts): a title bar with the three lights
+ * (close, minimize, zoom) and a title, then the app in the slot. Drag the
+ * title bar to move it; double-click it to fill the screen.
+ */
+interface Props {
+  /** The app's name, as desktop icons and scripts refer to it. */
+  app: string;
+  /** The title bar's text (an app can change it). */
+  title: string;
+  /** Open without JavaScript (the terminal); otherwise it waits for a click. */
+  open?: boolean;
+}
+
+const { app, title, open = false } = Astro.props;
+---
+
+<div
+  class="window"
+  role="region"
+  aria-label={app}
+  tabindex="-1"
+  data-window
+  data-app={app}
+  data-open={open ? "" : undefined}
+>
+  <div class="titlebar" data-titlebar>
+    <div class="lights">
+      <button
+        type="button"
+        class="light light-close"
+        data-action="close"
+        aria-label={`Close ${app}`}
+        title="Close"></button>
+      <button
+        type="button"
+        class="light light-min"
+        data-action="minimize"
+        aria-label={`Minimize ${app}`}
+        title="Minimize"></button>
+      <button
+        type="button"
+        class="light light-zoom"
+        data-action="zoom"
+        aria-label={`Fill the screen with ${app}`}
+        title="Zoom"></button>
+    </div>
+    <p class="window-title" data-window-title>{title}</p>
+  </div>
+  <slot />
+</div>

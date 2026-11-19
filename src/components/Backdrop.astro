@@ -61,8 +61,10 @@ const ground = (y: (x: number) => number, from = 0, to = W) =>
   ]);
 
 /**
- * A mountain range of sharp peaks and saddles, and snow caps for the taller
- * peaks (shown in winter).
+ * A mountain range of sharp peaks and saddles, snow caps for the taller
+ * peaks (shown in winter), and a shaded face on each peak: the left slope,
+ * away from the sun or moon (on the right of the sky), down to a crease, so
+ * the range reads as solid.
  */
 function mountains(random: Random, base: number, amp: number, step: number) {
   const points: Point[] = [
@@ -104,7 +106,17 @@ function mountains(random: Random, base: number, amp: number, step: number) {
       return polygon([peak, right, drift(0.7), drift(0.45), drift(0.2), left]);
     });
 
-  return { shape: polygon(points), caps: caps.join(" ") };
+  const shade = peaks
+    .map(([before, peak]) =>
+      polygon([
+        before,
+        peak,
+        [peak[0] - (peak[0] - before[0]) * 0.3, base + amp * 0.25],
+      ]),
+    )
+    .join(" ");
+
+  return { shape: polygon(points), caps: caps.join(" "), shade };
 }
 
 interface ForestOptions {
@@ -127,6 +139,8 @@ function forest(random: Random, y: (x: number) => number, o: ForestOptions) {
   const { from = 0, to = W, gap, broadleaf, scale = 1, skip } = o;
   let pines = "";
   let leaves = "";
+  // The half of each tree away from the light (the left).
+  let shade = "";
   for (let x = from; x < to; x += gap[0] + random() * (gap[1] - gap[0])) {
     const g = y(x) + 2;
     const isLeafy = random() < broadleaf;
@@ -136,15 +150,21 @@ function forest(random: Random, y: (x: number) => number, o: ForestOptions) {
     if (isLeafy) {
       const r = `${round(width / 2)} ${round(height)}`;
       leaves += ` M${pt([x - width / 2, g])} A${r} 0 0 1 ${pt([x + width / 2, g])} Z`;
+      shade += ` M${pt([x, g])} L${pt([x, g - height])} A${r} 0 0 0 ${pt([x - width / 2, g])} Z`;
     } else {
       pines += ` ${polygon([
         [x - width / 2, g],
         [x, g - height],
         [x + width / 2, g],
       ])}`;
+      shade += ` ${polygon([
+        [x, g - height],
+        [x - width / 2, g],
+        [x, g],
+      ])}`;
     }
   }
-  return { pines, leaves };
+  return { pines, leaves, shade };
 }
 
 /* Mountains: a range of peaks, rolling foothills and a pine forest. */
@@ -152,6 +172,7 @@ const mountainScene = (() => {
   const random = seeded(7);
   const groundY = (x: number) => 330 + Math.sin(x / 180) * 10;
   return {
+    back: mountains(seeded(107), 185, 150, 105),
     far: mountains(random, 220, 140, 150),
     mid: ridge(random, 262, 70, 120),
     ground: ground(groundY),
@@ -173,6 +194,7 @@ const riverScene = (() => {
       (t): Point => [centre(t) + (side * width(t)) / 2, top + (H - top) * t],
     );
   const groundY = (x: number) => 336 + Math.sin(x / 150) * 8;
+  const back = mountains(seeded(111), 190, 120, 120);
   const glints = Array.from({ length: 6 }, () => {
     const t = 0.55 + random() * 0.4;
     const x = centre(t) + (random() - 0.5) * width(t) * 0.5;
@@ -181,6 +203,7 @@ const riverScene = (() => {
     return `M${pt([x - half, y])} L${pt([x + half, y])}`;
   }).join(" ");
   return {
+    back,
     far: mountains(random, 215, 95, 190),
     mid: smoothHill(
       range(-40, W + 40, 60).map((x): Point => [x, valley(x) - random() * 14]),
@@ -226,6 +249,7 @@ const lakeScene = (() => {
     return `M${pt([x - half, y])} L${pt([x + half, y])}`;
   }).join(" ");
   return {
+    back: mountains(seeded(123), 200, 150, 115),
     far: mountains(random, 240, 150, 170),
     mid: ridge(random, LAKE_SHORE + 2, 22, 110),
     shores: `${ground(leftY, 0, reach)} ${ground(rightY, W - reach, W)}`,
@@ -233,6 +257,7 @@ const lakeScene = (() => {
     trees: {
       pines: left.pines + right.pines,
       leaves: left.leaves + right.leaves,
+      shade: left.shade + right.shade,
     },
   };
 })();
@@ -251,10 +276,13 @@ const hillScene = (() => {
   });
   const near = forest(random, groundY, { gap: [40, 170], broadleaf: 0.75 });
   return {
+    back: ridge(seeded(131), 212, 40, 200),
     far: ridge(random, 238, 45, 260),
     mid: smoothHill(range(-60, W + 60, 60).map((x): Point => [x, midY(x)])),
     ground: ground(groundY),
-    trees: { pines: far.pines + near.pines, leaves: far.leaves + near.leaves },
+    // The small trees on the far hill, and the nearer ones.
+    midTrees: far,
+    trees: near,
   };
 })();
 
@@ -303,6 +331,16 @@ const snow = falling(46, [10, 22], false);
 
 const viewBox = `0 0 ${W} ${H}`;
 const fit = "xMidYMax slice";
+
+/** Fog pooling at the foot of a layer, from clear at `top` to thick at `foot`. */
+const fog = (top: number, foot: number) => ({
+  x: -100,
+  y: top,
+  width: W + 200,
+  height: foot - top,
+  fill: "url(#fog)",
+  class: "fog",
+});
 ---
 
 <div class="backdrop" aria-hidden="true" transition:persist="backdrop">
@@ -329,17 +367,57 @@ const fit = "xMidYMax slice";
   </div>
   <div class="mist mist-a"></div>
 
+  <!-- Shared by the landscapes: fog that thickens downwards, and the
+       foreground darkening towards the bottom edge. The colours come from
+       the stylesheet. -->
+  <svg class="landscape-defs" width="0" height="0">
+    <defs>
+      <linearGradient id="fog" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" class="fog-stop" stop-opacity="0"></stop>
+        <stop offset="1" class="fog-stop fog-thick"></stop>
+      </linearGradient>
+      <linearGradient id="near-shade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" class="near-stop" stop-opacity="0"></stop>
+        <stop offset="1" class="near-stop near-dark"></stop>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <!--
+    Each landscape is in depth layers, from the back: the faint far range,
+    the main range, the middle hills, and the near ground and trees. Fog
+    pools at the foot of each layer, so every step back fades towards the
+    sky.
+  -->
   <svg
     class="landscape landscape-mountains"
     viewBox={viewBox}
     preserveAspectRatio={fit}
   >
-    <path class="far" d={mountainScene.far.shape}></path>
-    <path class="snowcap" d={mountainScene.far.caps}></path>
-    <path class="mid" d={mountainScene.mid}></path>
-    <path class="ground" d={mountainScene.ground}></path>
-    <path class="leaf" d={mountainScene.trees.leaves}></path>
-    <path class="pine" d={mountainScene.trees.pines}></path>
+    <g class="layer layer-back">
+      <path class="back" d={mountainScene.back.shape}></path>
+      <path class="snowcap" d={mountainScene.back.caps}></path>
+      <path class="shade" d={mountainScene.back.shade}></path>
+      <rect {...fog(110, 215)}></rect>
+    </g>
+    <g class="layer layer-far">
+      <path class="far" d={mountainScene.far.shape}></path>
+      <path class="snowcap" d={mountainScene.far.caps}></path>
+      <path class="shade" d={mountainScene.far.shade}></path>
+      <rect {...fog(150, 250)}></rect>
+    </g>
+    <g class="layer layer-mid">
+      <path class="mid" d={mountainScene.mid}></path>
+      <rect {...fog(250, 330)}></rect>
+    </g>
+    <g class="layer layer-near">
+      <path class="ground" d={mountainScene.ground}></path>
+      <path class="leaf" d={mountainScene.trees.leaves}></path>
+      <path class="pine" d={mountainScene.trees.pines}></path>
+      <path class="tree-shade" d={mountainScene.trees.shade}></path>
+      <rect class="near-shade" x="-100" y="330" width={W + 200} height="70"
+      ></rect>
+    </g>
   </svg>
 
   <svg
@@ -347,14 +425,32 @@ const fit = "xMidYMax slice";
     viewBox={viewBox}
     preserveAspectRatio={fit}
   >
-    <path class="far" d={riverScene.far.shape}></path>
-    <path class="snowcap" d={riverScene.far.caps}></path>
-    <path class="mid" d={riverScene.mid}></path>
-    <path class="ground" d={riverScene.ground}></path>
-    <path class="water" d={riverScene.water}></path>
-    <path class="glint" d={riverScene.glints}></path>
-    <path class="leaf" d={riverScene.trees.leaves}></path>
-    <path class="pine" d={riverScene.trees.pines}></path>
+    <g class="layer layer-back">
+      <path class="back" d={riverScene.back.shape}></path>
+      <path class="snowcap" d={riverScene.back.caps}></path>
+      <path class="shade" d={riverScene.back.shade}></path>
+      <rect {...fog(130, 205)}></rect>
+    </g>
+    <g class="layer layer-far">
+      <path class="far" d={riverScene.far.shape}></path>
+      <path class="snowcap" d={riverScene.far.caps}></path>
+      <path class="shade" d={riverScene.far.shade}></path>
+      <rect {...fog(160, 235)}></rect>
+    </g>
+    <g class="layer layer-mid">
+      <path class="mid" d={riverScene.mid}></path>
+      <rect {...fog(240, 300)}></rect>
+    </g>
+    <g class="layer layer-near">
+      <path class="ground" d={riverScene.ground}></path>
+      <path class="water" d={riverScene.water}></path>
+      <path class="glint" d={riverScene.glints}></path>
+      <path class="leaf" d={riverScene.trees.leaves}></path>
+      <path class="pine" d={riverScene.trees.pines}></path>
+      <path class="tree-shade" d={riverScene.trees.shade}></path>
+      <rect class="near-shade" x="-100" y="330" width={W + 200} height="70"
+      ></rect>
+    </g>
   </svg>
 
   <svg
@@ -363,25 +459,51 @@ const fit = "xMidYMax slice";
     preserveAspectRatio={fit}
   >
     <clipPath id="lake-water">
-      <rect x="0" y={LAKE_SHORE} width={W} height={H - LAKE_SHORE}></rect>
+      <rect x="-100" y={LAKE_SHORE} width={W + 200} height={H - LAKE_SHORE}
+      ></rect>
     </clipPath>
-    <path class="far" d={lakeScene.far.shape}></path>
-    <path class="snowcap" d={lakeScene.far.caps}></path>
-    <path class="mid" d={lakeScene.mid}></path>
-    <rect class="water" x="0" y={LAKE_SHORE} width={W} height={H - LAKE_SHORE}
-    ></rect>
-    <!-- The mountains mirrored in the still water. -->
+    <g class="layer layer-back">
+      <path class="back" d={lakeScene.back.shape}></path>
+      <path class="snowcap" d={lakeScene.back.caps}></path>
+      <path class="shade" d={lakeScene.back.shade}></path>
+      <rect {...fog(130, 225)}></rect>
+    </g>
+    <g class="layer layer-far">
+      <path class="far" d={lakeScene.far.shape}></path>
+      <path class="snowcap" d={lakeScene.far.caps}></path>
+      <path class="shade" d={lakeScene.far.shade}></path>
+      <rect {...fog(190, 270)}></rect>
+    </g>
+    <g class="layer layer-mid">
+      <path class="mid" d={lakeScene.mid}></path>
+    </g>
+    <rect
+      class="water"
+      x="-100"
+      y={LAKE_SHORE}
+      width={W + 200}
+      height={H - LAKE_SHORE}></rect>
+    <!-- The mountains mirrored in the still water; each copy shifts with
+         its layer, so the reflection stays under what it reflects. -->
     <g class="reflection" clip-path="url(#lake-water)">
       <g transform={`translate(0 ${2 * LAKE_SHORE}) scale(1 -1)`}>
-        <path class="far" d={lakeScene.far.shape}></path>
-        <path class="snowcap" d={lakeScene.far.caps}></path>
-        <path class="mid" d={lakeScene.mid}></path>
+        <g class="layer layer-far">
+          <path class="far" d={lakeScene.far.shape}></path>
+          <path class="snowcap" d={lakeScene.far.caps}></path>
+          <path class="shade" d={lakeScene.far.shade}></path>
+        </g>
+        <g class="layer layer-mid">
+          <path class="mid" d={lakeScene.mid}></path>
+        </g>
       </g>
     </g>
-    <path class="glint" d={lakeScene.glints}></path>
-    <path class="ground" d={lakeScene.shores}></path>
-    <path class="leaf" d={lakeScene.trees.leaves}></path>
-    <path class="pine" d={lakeScene.trees.pines}></path>
+    <g class="layer layer-near">
+      <path class="glint" d={lakeScene.glints}></path>
+      <path class="ground" d={lakeScene.shores}></path>
+      <path class="leaf" d={lakeScene.trees.leaves}></path>
+      <path class="pine" d={lakeScene.trees.pines}></path>
+      <path class="tree-shade" d={lakeScene.trees.shade}></path>
+    </g>
   </svg>
 
   <svg
@@ -389,15 +511,40 @@ const fit = "xMidYMax slice";
     viewBox={viewBox}
     preserveAspectRatio={fit}
   >
-    <path class="far" d={hillScene.far}></path>
-    <path class="mid" d={hillScene.mid}></path>
-    <path class="ground" d={hillScene.ground}></path>
-    <path class="leaf" d={hillScene.trees.leaves}></path>
-    <path class="pine" d={hillScene.trees.pines}></path>
+    <g class="layer layer-back">
+      <path class="back" d={hillScene.back}></path>
+      <rect {...fog(190, 240)}></rect>
+    </g>
+    <g class="layer layer-far">
+      <path class="far" d={hillScene.far}></path>
+      <rect {...fog(215, 285)}></rect>
+    </g>
+    <g class="layer layer-mid">
+      <path class="mid" d={hillScene.mid}></path>
+      <path class="leaf" d={hillScene.midTrees.leaves}></path>
+      <path class="pine" d={hillScene.midTrees.pines}></path>
+      <path class="tree-shade" d={hillScene.midTrees.shade}></path>
+      <rect {...fog(315, 350)}></rect>
+    </g>
+    <g class="layer layer-near">
+      <path class="ground" d={hillScene.ground}></path>
+      <path class="leaf" d={hillScene.trees.leaves}></path>
+      <path class="pine" d={hillScene.trees.pines}></path>
+      <path class="tree-shade" d={hillScene.trees.shade}></path>
+      <rect class="near-shade" x="-100" y="340" width={W + 200} height="60"
+      ></rect>
+    </g>
   </svg>
 
   <div class="mist mist-b"></div>
+</div>
 
+<!--
+  The weather: fireflies and falling petals, leaves or snow. A layer of its
+  own above the page, so they drift in front of the terminal as well as the
+  landscape. It never takes clicks.
+-->
+<div class="weather" aria-hidden="true" transition:persist="weather">
   <div class="fireflies">
     {
       fireflies.map((f) => (

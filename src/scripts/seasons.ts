@@ -1,5 +1,5 @@
-// Seasons, shared by the scene buttons (scene.ts) and the photography page,
-// which works out each post's season at build time. No browser APIs here.
+// Seasons, shared by the scene buttons (scene.ts) and the shell's albums,
+// whose seasons are worked out at build time. No browser APIs here.
 
 export const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
 export type Season = (typeof SEASONS)[number];

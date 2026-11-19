@@ -1,0 +1,72 @@
+---
+/*
+ * The Settings app (scripts/settings.ts): the theme, the season and the
+ * wallpaper (landscape). Each starts on Automatic, which follows the
+ * visitor's clock, the calendar, or picks a landscape at random; a choice
+ * lasts for the visit (sessionStorage), and the backdrop changes at once.
+ */
+import { SEASONS } from "../scripts/seasons";
+import Window from "./Window.astro";
+
+const capital = (word: string) => word[0].toUpperCase() + word.slice(1);
+
+// The landscapes in Backdrop.astro (SCENES in scripts/scene.ts, which can
+// only run in the browser), with their names here.
+const scenes: [string, string][] = [
+  ["mountains", "Mountains"],
+  ["river", "River valley"],
+  ["lake", "Lake"],
+  ["hills", "Rolling hills"],
+];
+
+const groups = [
+  {
+    part: "theme",
+    label: "Appearance",
+    auto: "Automatic",
+    hint: "day from 7am to 7pm",
+    options: [
+      ["day", "Day"],
+      ["night", "Night"],
+    ],
+  },
+  {
+    part: "season",
+    label: "Season",
+    auto: "Automatic",
+    hint: "follows the calendar",
+    options: SEASONS.map((season) => [season, capital(season)]),
+  },
+  {
+    part: "scene",
+    label: "Wallpaper",
+    auto: "Random",
+    hint: "a new one each visit",
+    options: scenes,
+  },
+];
+---
+
+<Window app="settings" title="Settings">
+  <form class="settings" data-settings>
+    {
+      groups.map((group) => (
+        <fieldset class="settings-group">
+          <legend>{group.label}</legend>
+          <label class="settings-option">
+            <input type="radio" name={group.part} value="" />
+            <span>{group.auto}</span>
+            <span class="settings-hint">{group.hint}</span>
+          </label>
+          {group.options.map(([value, name]) => (
+            <label class="settings-option">
+              <input type="radio" name={group.part} value={value} />
+              <span>{name}</span>
+            </label>
+          ))}
+        </fieldset>
+      ))
+    }
+    <p class="settings-note">Choices last until you close the tab.</p>
+  </form>
+</Window>

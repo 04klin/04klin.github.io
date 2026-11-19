@@ -1,0 +1,23 @@
+---
+/**
+ * The small icon before a name in the shell's listings, picked from the
+ * name: a folder for names ending in "/", otherwise by extension. The
+ * shapes are CSS masks ([data-icon] in the stylesheet).
+ */
+interface Props {
+  name: string;
+}
+
+const { name } = Astro.props;
+const kind = name.endsWith("/")
+  ? "dir"
+  : name.endsWith(".pdf")
+    ? "pdf"
+    : name.endsWith(".url")
+      ? "link"
+      : /\.(jpe?g|png|webp|gif)$/i.test(name)
+        ? "image"
+        : "text";
+---
+
+<span class="ls-icon" data-icon={kind} aria-hidden="true"></span>

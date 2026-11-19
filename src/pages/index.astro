@@ -1,107 +1,22 @@
 ---
-import { Image } from "astro:assets";
-import { getCollection } from "astro:content";
 import Layout from "../layouts/Layout.astro";
-import alleyway from "../assets/photography/alleyway.jpg";
-import marketplace from "../assets/photography/marketplace.jpg";
-import mntFuji from "../assets/photography/mnt_fuji.jpg";
-
-// Endings for "I ..." under the greeting. One is picked at random on each
-// visit; the first is what shows without JavaScript.
-const phrases = [
-  "love my work, and my work loves me.",
-  "can't wait to see my coworkers.",
-  "am ready to go to work.",
-  "belong to my work.",
-  "enjoy my work.",
-  "am ready for Monday.",
-  "used my weekend to prepare for Monday.",
-  "will do my best.",
-  "love Claude Code.",
-  "miss my work.",
-];
-
-const projects = (await getCollection("projects")).sort(
-  (a, b) => a.data.order - b.data.order,
-);
-
-// How many projects (by `order`) the home page lists. The rest are on
-// /projects.
-const HOME_PROJECTS = 5;
-
-// Fanned-out prints in the photography section. The last one sits on top.
-const stack = [marketplace, alleyway, mntFuji];
+import Shell from "../components/Shell.astro";
 ---
 
-<Layout current="home" walk>
-  <section class="hero">
-    <h1>Hi, I'm Kevin.</h1>
-    <p class="hero-line">
-      I <span data-phrases={JSON.stringify(phrases)}>{phrases[0]}</span>
-    </p>
-  </section>
-
-  <section class="section">
-    <div class="section-heading">
-      <h2>Projects</h2>
-      <a href="/projects" class="section-link">All projects</a>
-    </div>
-    <ul class="project-rows">
-      {
-        projects.slice(0, HOME_PROJECTS).map((project) => (
-          <li>
-            <a href={`/projects#${project.id}`}>
-              <span class="project-row-title">
-                {project.data.title}
-                {project.data.status && (
-                  <span class="status">{project.data.status}</span>
-                )}
-              </span>
-              {project.data.context && (
-                <span class="project-row-context">{project.data.context}</span>
-              )}
-            </a>
-          </li>
-        ))
-      }
-    </ul>
-  </section>
-
-  <section class="section">
-    <div class="section-heading">
-      <h2>Photography</h2>
-      <a href="/photography" class="section-link">All photos</a>
-    </div>
-    <div class="photo-feature">
-      <a href="/photography" class="photo-stack" aria-label="Photography">
-        {
-          stack.map((photo) => (
-            <Image
-              src={photo}
-              alt=""
-              width={460}
-              height={580}
-              fit="cover"
-              class="stack-photo"
-            />
-          ))
-        }
-      </a>
-      <p>
-        Mostly hikes and trips: Grandfather Mountain, Linville Gorge, Tokyo,
-        Osaka and New York, shot on a Canon EOS Rebel T7.
-      </p>
-    </div>
-  </section>
+<Layout walk>
+  <Shell />
 </Layout>
 
 <script>
-  // Picks one of the endings at random for this visit.
+  import { setupPhotos } from "../scripts/photos";
+  import { setupSettings } from "../scripts/settings";
+  import { setupShell } from "../scripts/shell";
+  import { setupWindows } from "../scripts/windows";
+
   document.addEventListener("astro:page-load", () => {
-    const el = document.querySelector<HTMLElement>("[data-phrases]");
-    if (!el) return;
-    const phrases: string[] = JSON.parse(el.dataset.phrases ?? "[]");
-    if (phrases.length > 0)
-      el.textContent = phrases[Math.floor(Math.random() * phrases.length)];
+    setupWindows();
+    setupPhotos();
+    setupSettings();
+    setupShell();
   });
 </script>

@@ -1,20 +1,12 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import Backdrop from "../components/Backdrop.astro";
-import SiteFooter from "../components/SiteFooter.astro";
-import SiteHeader from "../components/SiteHeader.astro";
-import { siteName, type NavKey } from "../site";
+import BootScreen from "../components/BootScreen.astro";
+import { siteName } from "../site";
 
 interface Props {
-  /** Which top bar link to highlight. Omit on pages outside the nav. */
-  current?: NavKey;
-  /**
-   * Page heading. When set, the page gets an <h1> and a
-   * "<heading> | <site name>" title. Omit it for the home page.
-   */
-  heading?: string;
-  /** One line under the heading. */
-  lead?: string;
+  /** Page name, for a "<title> | <site name>" tab title. Omit on the home page. */
+  title?: string;
   /** Summary for search results and link previews. */
   description?: string;
   /**
@@ -25,13 +17,11 @@ interface Props {
 }
 
 const {
-  current,
-  heading,
-  lead,
-  description = "Kevin Lin's projects and photography.",
+  title: pageTitle,
+  description = "Kevin Lin's photos from hikes and trips, in a shell.",
   walk = false,
 } = Astro.props;
-const title = heading ? `${heading} | ${siteName}` : siteName;
+const title = pageTitle ? `${pageTitle} | ${siteName}` : siteName;
 
 // Link previews (Discord, iMessage, LinkedIn, ...) need absolute URLs.
 const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
@@ -58,7 +48,7 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
-      content="Kevin Lin: projects and photography"
+      content="Kevin Lin: photos from hikes and trips"
     />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
@@ -97,10 +87,14 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
             return null;
           }
         };
-        // A new landscape on every page load (including reloads). It is kept
-        // in memory, so it stays the same while the visitor clicks between
+        // A new landscape on every page load (including reloads), unless one
+        // was chosen in Settings during this visit. It is kept in
+        // memory, so it stays the same while the visitor clicks between
         // pages, which swap the page without reloading it.
-        window.__scene ??= scenes[Math.floor(Math.random() * scenes.length)];
+        const scene = read(sessionStorage, "scene");
+        window.__scene ??= scenes.includes(scene)
+          ? scene
+          : scenes[Math.floor(Math.random() * scenes.length)];
 
         const apply = () => {
           const now = new Date();
@@ -121,8 +115,35 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
             : byMonth[now.getMonth()];
 
           root.dataset.scene = window.__scene;
+
+          // Lets the stylesheet hide text that a script is about to type
+          // out (scripts/type.ts), so it does not flash first.
+          root.dataset.js = "";
         };
         apply();
+
+        // The shell intro (BootScreen.astro): once per visit, on the first
+        // page only, and never with reduced motion (it is all animation).
+        // The shell's `reboot` command reloads the page and asks for it
+        // again. Not set again on swaps.
+        const rebooting = read(sessionStorage, "reboot") === "1";
+        if (rebooting) {
+          try {
+            sessionStorage.removeItem("reboot");
+          } catch {}
+        }
+        if (
+          !window.__booted &&
+          (rebooting || !read(sessionStorage, "booted")) &&
+          matchMedia("(prefers-reduced-motion: no-preference)").matches
+        ) {
+          root.dataset.boot = "";
+          try {
+            sessionStorage.setItem("booted", "1");
+          } catch {}
+        }
+        window.__booted = true;
+
         if (!window.__sceneOnSwap) {
           window.__sceneOnSwap = true;
           document.addEventListener("astro:after-swap", apply);
@@ -143,42 +164,23 @@ const previewImage = new URL("/assets/og-image.png", Astro.site).href;
       type="image/x-icon"
     />
     <link href="/assets/tokyo_pfp.png" rel="apple-touch-icon" />
-    <noscript>
-      <style>
-        /* The season and day/night buttons need JS. */
-        .header-controls {
-          display: none !important;
-        }
-      </style>
-    </noscript>
   </head>
   <body>
     <!-- Kept across navigations so its animations do not restart. -->
     <Backdrop />
 
-    <SiteHeader current={current} />
+    <BootScreen />
 
     <main class="page">
-      {
-        heading && (
-          <header class="page-header">
-            <h1>{heading}</h1>
-            {lead && <p class="lead">{lead}</p>}
-          </header>
-        )
-      }
       <slot />
     </main>
 
-    <SiteFooter />
-
     <script>
-      import { setupSceneControls, setupWalkFallback } from "../scripts/scene";
+      import { setupBootScreen } from "../scripts/boot";
+      import { setupWalk } from "../scripts/scene";
 
-      setupSceneControls();
-      setupWalkFallback();
+      setupBootScreen();
+      setupWalk();
     </script>
-
-
   </body>
 </html>

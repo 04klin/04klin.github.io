@@ -2,6 +2,11 @@
 import { getCollection } from "astro:content";
 import Layout from "../layouts/Layout.astro";
 import Project from "../components/Project.astro";
+import { features } from "../site";
+
+// Switched off while unfinished (`features.projects` in site.ts): the build
+// writes a page that sends visitors to the home page instead.
+if (!features.projects) return Astro.redirect("/");
 
 const projects = (await getCollection("projects")).sort(
   (a, b) => a.data.order - b.data.order,
@@ -9,9 +14,7 @@ const projects = (await getCollection("projects")).sort(
 ---
 
 <Layout
-  current="projects"
-  heading="Projects"
-  lead="Things I've been working on."
+  title="Projects"
   description="Projects by Kevin Lin: open source, self-hosted apps, Discord bots, robotics and more."
 >
   <section class="project-list">

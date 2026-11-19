@@ -1,0 +1,305 @@
+---
+/*
+ * The home page: a desktop whose wallpaper is the landscape, with one app,
+ * the terminal, in an iTerm-like window. A session opens with the login
+ * notice (/etc/motd, with the greeting) and the home folder. The terminal
+ * scrolls inside; its scroll also drives the walk (scene.ts).
+ * Visitors click names in the output (or type commands) to look around:
+ * `ssh nas` logs in to the photo share, where each album is a folder.
+ * scripts/shell.ts runs it; this file renders everything it shows, so the
+ * images go through Astro's build-time pipeline:
+ *
+ * - the notice and the home `ls` output, which are also what shows
+ *   without JavaScript,
+ * - <template>s for the albums listing and for each album's thumbnails,
+ * - the album data (large images for the Photos viewer, seasons) as JSON for the script.
+ */
+import type { ImageMetadata } from "astro";
+import { Image, getImage } from "astro:assets";
+import { albums, camera, flickrUrl, photo } from "../photos";
+import { seasonOf } from "../scripts/seasons";
+import { contact, features, shellHost } from "../site";
+import FileIcon from "./FileIcon.astro";
+import PhotosApp from "./PhotosApp.astro";
+import Prompt from "./Prompt.astro";
+import SettingsApp from "./SettingsApp.astro";
+import Window from "./Window.astro";
+
+// Originals are full camera resolution. Astro makes the thumbnails and the
+// large version for the Photos viewer at build time.
+const VIEWER_LONG_EDGE = 2400;
+
+async function viewerSrc(image: ImageMetadata) {
+  const scale = Math.min(
+    1,
+    VIEWER_LONG_EDGE / Math.max(image.width, image.height),
+  );
+  const full = await getImage({
+    src: image,
+    width: Math.round(image.width * scale),
+    format: "webp",
+  });
+  return full.src;
+}
+
+const data = await Promise.all(
+  albums.map(async (album) => ({
+    dir: album.dir,
+    date: album.date,
+    season: seasonOf(album.date) ?? null,
+    link: album.link ?? null,
+    photos: await Promise.all(
+      album.photos.map(async (p) => ({
+        name: p.file,
+        alt: p.alt,
+        full: await viewerSrc(photo(p.file)),
+      })),
+    ),
+  })),
+);
+
+const shellData = {
+  host: shellHost,
+  projects: features.projects,
+  email: contact.email,
+  resume: contact.resume,
+  github: contact.githubUrl,
+  flickr: flickrUrl,
+  camera,
+  photoCount: albums.reduce((sum, album) => sum + album.photos.length, 0),
+  albums: data,
+};
+---
+
+<!--
+  A desktop: the landscape is the wallpaper, with three apps, each in its
+  own movable window (scripts/windows.ts): the terminal (scripts/shell.ts),
+  Photos (PhotosApp.astro) and Settings (SettingsApp.astro). The terminal
+  opens by itself; without JavaScript it is simply open, and the icons and
+  other apps are not there.
+-->
+<section class="desktop" data-desktop>
+  <div class="desktop-icons">
+    <button type="button" class="desktop-icon" data-open-app="terminal">
+      <span class="app-icon app-terminal" aria-hidden="true">&gt;_</span>
+      <span class="desktop-label">Terminal</span>
+    </button>
+    <button type="button" class="desktop-icon" data-open-app="photos">
+      <span class="app-icon app-photos" aria-hidden="true">
+        <svg viewBox="0 0 40 40">
+          <circle cx="28" cy="12" r="4"></circle>
+          <path d="M0 40V29l9-10 8 8 7-6 16 13v6z"></path>
+        </svg>
+      </span>
+      <span class="desktop-label">Photos</span>
+    </button>
+    <button type="button" class="desktop-icon" data-open-app="settings">
+      <span class="app-icon app-settings" aria-hidden="true">
+        <svg viewBox="0 0 40 40">
+          <circle class="gear-teeth" cx="20" cy="20" r="11.5"></circle>
+          <circle class="gear-body" cx="20" cy="20" r="9.5"></circle>
+          <circle class="gear-hole" cx="20" cy="20" r="3.5"></circle>
+        </svg>
+      </span>
+      <span class="desktop-label">Settings</span>
+    </button>
+  </div>
+
+  <Window app="terminal" title={`guest@${shellHost}: ~`} open>
+    <div class="term" data-term data-shell={JSON.stringify(shellData)}>
+      <div class="term-scroll" data-term-scroll data-walk-scroller>
+        <div class="term-log" role="log" data-term-log>
+          <p class="term-line"><Prompt /> cat /etc/motd</p>
+          <!-- The login notice, like the ones servers show on login. The script
+           reuses it for every `cat /etc/motd`. The rules are clipped to the
+           terminal's width. -->
+          <div class="motd" data-out="motd">
+            <p class="motd-rule" aria-hidden="true">{"=".repeat(200)}</p>
+            <h1 class="motd-greeting">Hi, I'm Kevin.</h1>
+            <p>You are logged in to {shellHost} as guest.</p>
+            <p>Photos are on the nas, read-only. Look around.</p>
+            <p class="motd-rule" aria-hidden="true">{"=".repeat(200)}</p>
+          </div>
+
+          <p class="term-line"><Prompt /> ls</p>
+          <!-- The home folder. The script reuses it for every `ls` there. -->
+          <ul class="ls" data-out="home">
+            <li>
+              <button type="button" class="ls-dir" data-goto="photos"
+                ><FileIcon name="photos/" />photos/</button
+              >
+            </li>
+            {
+              features.projects && (
+                <li>
+                  <a class="ls-dir" href="/projects">
+                    <FileIcon name="projects/" />
+                    projects/
+                  </a>
+                </li>
+              )
+            }
+            <li>
+              <a class="ls-file" href={contact.resume} target="_blank"
+                ><FileIcon name="resume.pdf" />resume.pdf</a
+              >
+            </li>
+            <li>
+              <a
+                class="ls-file"
+                href={contact.githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                ><FileIcon name="github.url" />github.url</a
+              >
+            </li>
+            <li>
+              <button type="button" class="ls-file" data-goto="email"
+                ><FileIcon name="email.txt" />email.txt</button
+              >
+            </li>
+          </ul>
+
+          <!-- Without JavaScript, every album is listed here instead. -->
+          <noscript>
+            {
+              data.map((album, a) => (
+                <Fragment>
+                  <p class="term-line">
+                    <Prompt host="nas" path={`~/${album.dir}`} /> ls
+                  </p>
+                  <ul class="tiles">
+                    {album.photos.map((p, i) => (
+                      <li>
+                        <a class="tile" href={p.full}>
+                          <Image
+                            src={photo(albums[a].photos[i].file)}
+                            alt={p.alt}
+                            width={480}
+                            height={320}
+                            fit="cover"
+                          />
+                          <span class="tile-name">
+                            <FileIcon name={p.name} />
+                            <span class="tile-text">{p.name}</span>
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </Fragment>
+              ))
+            }
+          </noscript>
+        </div>
+
+        <!-- The live prompt, shown once the script is running. -->
+        <label class="term-line term-input-line" data-term-input-line hidden>
+          <span data-term-prompt><Prompt /></span>
+          <input
+            type="text"
+            class="term-input"
+            data-term-input
+            aria-label="Command (try help)"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            enterkeyhint="go"
+          />
+        </label>
+      </div>
+    </div>
+  </Window>
+
+  <PhotosApp albums={data} />
+  <SettingsApp />
+
+  <!-- `ls -l` on the nas: the albums. -->
+  <template data-out="albums">
+    <ul class="ls ls-long">
+      {
+        albums.map((album) => (
+          <li>
+            <span class="ls-meta ls-perm">drwxr-xr-x</span>
+            <span class="ls-meta ls-count">{album.photos.length}</span>
+            <span class="ls-meta">{album.date}</span>
+            <button
+              type="button"
+              class="ls-dir"
+              data-goto={`album:${album.dir}`}
+            >
+              <FileIcon name={`${album.dir}/`} />
+              {album.dir}/
+            </button>
+          </li>
+        ))
+      }
+      <li>
+        <span class="ls-meta ls-perm">-rw-r--r--</span>
+        <span class="ls-meta ls-count"></span>
+        <span class="ls-meta"></span>
+        <a
+          class="ls-file"
+          href={flickrUrl}
+          target="_blank"
+          rel="noopener noreferrer"><FileIcon name="flickr.url" />flickr.url</a
+        >
+      </li>
+    </ul>
+  </template>
+
+  <!-- `ls` inside an album: thumbnails, like a terminal image preview. -->
+  {
+    albums.map((album) => (
+      <template data-out={`album:${album.dir}`}>
+        <ul class="ls">
+          <li>
+            <button type="button" class="ls-dir" data-goto="albums">
+              <FileIcon name="../" />
+              ../
+            </button>
+          </li>
+          {album.link && (
+            <li>
+              <a
+                class="ls-file"
+                href={album.link}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileIcon name="album.url" />
+                album.url
+              </a>
+            </li>
+          )}
+        </ul>
+        <ul class="tiles">
+          {album.photos.map((p, i) => (
+            <li>
+              <button
+                type="button"
+                class="tile"
+                data-photo={i}
+                data-album={album.dir}
+                aria-label={`Open ${p.file}: ${p.alt}`}
+              >
+                <Image
+                  src={photo(p.file)}
+                  alt={p.alt}
+                  width={480}
+                  height={320}
+                  fit="cover"
+                />
+                <span class="tile-name">
+                  <FileIcon name={p.file} />
+                  <span class="tile-text">{p.file}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </template>
+    ))
+  }
+</section>

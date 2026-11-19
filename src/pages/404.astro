@@ -1,28 +1,23 @@
 ---
-import { Image } from "astro:assets";
 import Layout from "../layouts/Layout.astro";
-import mntFuji from "../assets/photography/mnt_fuji.jpg";
+import Prompt from "../components/Prompt.astro";
 ---
 
 <!-- GitHub Pages serves the built 404.html for any path that does not exist. -->
-<Layout heading="404" lead="This page wandered off the trail.">
-  <section class="not-found">
-    <p class="link-row">
-      <a href="/">Take me home</a>
-      <a href="/projects">Projects</a>
-      <a href="/photography">Photography</a>
+<Layout title="404">
+  <div class="term term-404">
+    <p class="term-line">
+      <Prompt /> cd <span data-missing-path>that-page</span>
     </p>
-
-    <figure class="not-found-photo">
-      <Image
-        src={mntFuji}
-        alt="Mt. Fuji, mostly hidden by clouds"
-        width={1400}
-        height={600}
-        fit="cover"
-        loading="eager"
-      />
-      <figcaption>Searched up here too. Nothing but clouds.</figcaption>
-    </figure>
-  </section>
+    <p class="term-err">cd: no such file or directory</p>
+    <p class="term-line"><Prompt /> <a href="/">cd ~</a></p>
+  </div>
 </Layout>
+
+<script>
+  // Names the path that was asked for.
+  document.addEventListener("astro:page-load", () => {
+    const slot = document.querySelector("[data-missing-path]");
+    if (slot) slot.textContent = decodeURIComponent(location.pathname);
+  });
+</script>

@@ -8,11 +8,17 @@ export const contact = {
   resume: "/assets/resume.pdf",
 } as const;
 
-/** Top bar links, in display order. Add a page here to put it in the nav. */
-export const navItems = [
-  { key: "home", href: "/", label: "Home" },
-  { key: "projects", href: "/projects", label: "Projects" },
-  { key: "photography", href: "/photography", label: "Photography" },
-] as const;
+/** Host name in the shell prompts (boot screen, home page, 404). */
+export const shellHost = "kevinlin.sh";
 
-export type NavKey = (typeof navItems)[number]["key"];
+/** Version shown on the boot screen. Arbitrary; bump it for fun. */
+export const siteVersion = "v0.9.0";
+
+/**
+ * Sections switched off while they are unfinished. Their pages, components
+ * and content stay in the repository; set one to true to bring it back.
+ */
+export const features = {
+  /** The /projects page and its entry in the shell's home folder. */
+  projects: false,
+};
