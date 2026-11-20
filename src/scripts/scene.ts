@@ -63,7 +63,7 @@ function ownSeason(): Season {
 let running: ViewTransition | null = null;
 
 /**
- * Applies a change to the scene (season, theme or landscape). Where view
+ * Applies a change to the theme or landscape. Where view
  * transitions are supported, the old scene crossfades into the new one.
  * Resolves once the change is fully shown.
  */
@@ -88,6 +88,23 @@ function changeScene(apply: () => void): Promise<void> {
       running = null;
       root.classList.remove("theme-switching");
     });
+}
+
+/**
+ * Applies a change of season. Unlike the other parts of the scene it does
+ * not crossfade the whole page: the stylesheet glides the landscape's
+ * colours to the new season's and fades the weather, so the page stays live
+ * (clicks keep working, an album's grid shows at once). Resolves once the
+ * change is fully shown.
+ */
+function changeSeason(season: string): Promise<void> {
+  root.dataset.season = season;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) return Promise.resolve();
+  const fade = parseFloat(
+    getComputedStyle(root).getPropertyValue("--season-fade"),
+  );
+  return new Promise((done) => setTimeout(done, (fade || 0) * 1000));
 }
 
 /**
@@ -144,7 +161,8 @@ function automatic(part: ScenePart): string {
  * Sets the theme, season or landscape for the rest of the visit (the
  * Settings app), saved in sessionStorage; the landscape is also kept in
  * memory for view transition navigations. Null goes back to automatic (the
- * clock, the calendar, a random landscape). The change crossfades in.
+ * clock, the calendar, a random landscape). The change crossfades in (a
+ * season glides in, see changeSeason).
  */
 export function chooseScene(
   part: ScenePart,
@@ -160,6 +178,7 @@ export function chooseScene(
   const shown = value ?? automatic(part);
   if (part === "scene") window.__scene = shown;
   if (root.dataset[part] === shown) return Promise.resolve();
+  if (part === "season") return changeSeason(shown);
   const apply = () => {
     root.dataset[part] = shown;
   };
@@ -178,13 +197,10 @@ export function chosen(part: ScenePart): string | null {
 /**
  * Shows a season for a while without saving it: the shell's album folders
  * take the season they were shot in. Null goes back to the visitor's own
- * season. The change crossfades in. Resolves once the change is fully shown.
+ * season. The change glides in. Resolves once the change is fully shown.
  */
 export function showSeason(season: Season | null): Promise<void> {
   const target = season ?? ownSeason();
   if (root.dataset.season === target) return Promise.resolve();
-  const apply = () => {
-    root.dataset.season = target;
-  };
-  return changeScene(apply);
+  return changeSeason(target);
 }

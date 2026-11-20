@@ -45,11 +45,80 @@ function smoothHill(points: Point[]) {
   return `${d} L${pt(last)} L${round(last[0])} ${H} Z`;
 }
 
+/** The points of a soft ridgeline of random heights. */
+const ridgePoints = (
+  random: Random,
+  base: number,
+  amp: number,
+  step: number,
+): Point[] =>
+  range(-step, W + step, step).map((x) => [x, base - random() * amp]);
+
 /** A soft ridgeline of random heights. */
 const ridge = (random: Random, base: number, amp: number, step: number) =>
-  smoothHill(
-    range(-step, W + step, step).map((x) => [x, base - random() * amp]),
-  );
+  smoothHill(ridgePoints(random, base, amp, step));
+
+/** A smooth curve through the points, as a height for every x. */
+function curve(points: Point[]) {
+  return (x: number) => {
+    let i = 0;
+    while (i < points.length - 2 && points[i + 1][0] < x) i++;
+    const [[x0, y0], [x1, y1]] = [points[i], points[i + 1]];
+    const t = Math.min(1, Math.max(0, (x - x0) / (x1 - x0)));
+    return y0 + (y1 - y0) * (1 - Math.cos(Math.PI * t)) * 0.5;
+  };
+}
+
+/**
+ * A rough line from a to b (b left out): each pass splits every segment and
+ * pushes the new midpoint sideways by up to `rough` times the segment's
+ * length, less on each pass, the way real ridgelines and gullies wander.
+ */
+function jag(random: Random, a: Point, b: Point, rough: number, passes = 4) {
+  let line: Point[] = [a, b];
+  let spread = rough;
+  for (let pass = 0; pass < passes; pass++) {
+    const next: Point[] = [];
+    for (let i = 0; i < line.length - 1; i++) {
+      const [p, q] = [line[i], line[i + 1]];
+      const [dx, dy] = [q[0] - p[0], q[1] - p[1]];
+      const off = (random() - 0.5) * 2 * spread;
+      next.push(p, [p[0] + dx / 2 - dy * off, p[1] + dy / 2 + dx * off]);
+    }
+    next.push(line[line.length - 1]);
+    line = next;
+    spread *= 0.55;
+  }
+  return line.slice(0, -1);
+}
+
+/**
+ * Land along a line whose top edge is a distant forest: a dense row of tiny
+ * pine tips and rounded crowns, so far hills read as wooded, not as smooth
+ * blobs. `size` scales the trees (smaller further away).
+ */
+function treeline(random: Random, y: (x: number) => number, size: number) {
+  const points: Point[] = [[-20, H]];
+  for (let x = -20; x <= W + 20; ) {
+    const w = (3 + random() * 5) * size;
+    const h = (2 + random() * 7) * size;
+    const g = y(x);
+    if (random() < 0.7) {
+      points.push([x, g], [x + w / 2, g - h], [x + w, g]);
+    } else {
+      points.push(
+        [x, g],
+        [x + w * 0.15, g - h * 0.6],
+        [x + w * 0.5, g - h * 0.75],
+        [x + w * 0.85, g - h * 0.6],
+        [x + w, g],
+      );
+    }
+    x += w * (0.7 + random() * 0.6);
+  }
+  points.push([W + 20, H]);
+  return polygon(points);
+}
 
 /** The ground along a line, filled down to the bottom. */
 const ground = (y: (x: number) => number, from = 0, to = W) =>
@@ -61,62 +130,102 @@ const ground = (y: (x: number) => number, from = 0, to = W) =>
   ]);
 
 /**
- * A mountain range of sharp peaks and saddles, snow caps for the taller
- * peaks (shown in winter), and a shaded face on each peak: the left slope,
- * away from the sun or moon (on the right of the sky), down to a crease, so
- * the range reads as solid.
+ * A mountain range of sharp peaks and saddles with rough, wandering
+ * ridgelines; snow caps that follow the rock down into the gullies (shown
+ * in winter); a shaded face on each peak, the left slope away from the sun
+ * or moon (on the right of the sky), down a crooked crease; and fainter
+ * gullies furrowing the lit faces, so the range reads as solid rock.
  */
 function mountains(random: Random, base: number, amp: number, step: number) {
-  const points: Point[] = [
-    [0, H],
-    [0, base],
-  ];
   const peaks: [Point, Point, Point][] = [];
   let previous: Point = [0, base];
   for (let x = 0; x <= W + step; x += step) {
     const height = amp * (0.45 + random() * 0.55);
     const peak: Point = [x + step * (0.35 + random() * 0.3), base - height];
     const saddle: Point = [x + step, base - amp * random() * 0.3];
-    points.push(peak, saddle);
     peaks.push([previous, peak, saddle]);
     previous = saddle;
   }
-  points.push([previous[0], H]);
+
+  // The detail has its own random numbers, so the peaks stay where they
+  // were, and whatever the detail does, the rest of the scene too.
+  const detail = seeded(round(base * 13 + amp * 3 + step));
+  // Never above its own peak, so each summit stays the top.
+  const below = (top: Point) => (line: Point[]) =>
+    line.map(([x, y], i): Point => [x, i === 0 ? y : Math.max(y, top[1] + 3)]);
+  const slopes = peaks.map(([before, peak, after]) => ({
+    left: below(peak)(jag(detail, before, peak, 0.09)),
+    right: [peak, ...below(peak)(jag(detail, peak, after, 0.09).slice(1))],
+  }));
+
+  const outline: Point[] = [[0, H]];
+  slopes.forEach(({ left, right }) => outline.push(...left, ...right));
+  outline.push([previous[0], previous[1]], [previous[0], H]);
 
   // Snow lies above one snow line for the whole range, so taller peaks get
-  // deeper caps and peaks below it get none. The caps' own random numbers
-  // keep the range's shapes the same whatever the caps do.
+  // deeper caps and peaks below it get none. From the summit, the cap
+  // follows each slope down to the snow line, and its lower edge reaches
+  // down in fingers, as snow lies longest in the gullies.
   const snowLine = base - amp * 0.62;
-  const capRandom = seeded(round(base * 7 + amp));
   const caps = peaks
-    .filter(([, peak]) => peak[1] < snowLine - 10)
-    .map(([before, peak, after]) => {
-      // Where each slope crosses the snow line.
-      const cross = (to: Point): Point => {
-        const f = (snowLine - peak[1]) / (to[1] - peak[1]);
-        return [peak[0] + (to[0] - peak[0]) * f, snowLine];
+    .map(([, peak], i) => {
+      if (peak[1] >= snowLine - 10) return "";
+      const { left, right } = slopes[i];
+      const down = (side: Point[]) => {
+        const kept: Point[] = [];
+        for (const p of side) {
+          if (p[1] > snowLine) break;
+          kept.push(p);
+        }
+        return kept;
       };
-      const left = cross(before);
-      const right = cross(after);
-      // The lower edge dips into a few drifts, never above the snow line.
-      const drift = (f: number): Point => [
-        left[0] + (right[0] - left[0]) * f,
-        snowLine + 2 + capRandom() * 6,
-      ];
-      return polygon([peak, right, drift(0.7), drift(0.45), drift(0.2), left]);
-    });
+      const leftUp = down([...left].reverse()).reverse();
+      const rightDown = down(right);
+      const [l, r] = [leftUp[0] ?? peak, rightDown[rightDown.length - 1]];
+      const edge = range(1, 7, 1).map((k): Point => {
+        const finger = k % 2 === 0 ? amp * (0.06 + detail() * 0.12) : 0;
+        return [
+          r[0] + ((l[0] - r[0]) * k) / 8,
+          snowLine + 2 + detail() * amp * 0.05 + finger,
+        ];
+      });
+      return polygon([...leftUp, ...rightDown, ...edge]);
+    })
+    .filter(Boolean);
 
   const shade = peaks
-    .map(([before, peak]) =>
-      polygon([
-        before,
-        peak,
-        [peak[0] - (peak[0] - before[0]) * 0.3, base + amp * 0.25],
-      ]),
-    )
+    .map(([before, peak], i) => {
+      const foot: Point = [
+        peak[0] - (peak[0] - before[0]) * (0.2 + detail() * 0.2),
+        base + amp * 0.25,
+      ];
+      return polygon([
+        ...slopes[i].left,
+        ...jag(detail, peak, foot, 0.12, 3),
+        foot,
+      ]);
+    })
     .join(" ");
 
-  return { shape: polygon(points), caps: caps.join(" "), shade };
+  // One or two gullies down each lit face: thin wedges that widen downhill.
+  const gullies = peaks
+    .flatMap(([, peak, after], i) => {
+      const right = slopes[i].right;
+      return range(1, 1 + round(detail()), 1).map(() => {
+        const top = right[1 + Math.floor(detail() * (right.length / 2))];
+        const reach = (after[0] - peak[0]) * (0.15 + detail() * 0.25);
+        const foot: Point = [top[0] - reach, base + amp * 0.25];
+        const width = 6 + detail() * 14;
+        return polygon([
+          ...jag(detail, top, foot, 0.1, 3),
+          foot,
+          [foot[0] + width, foot[1]],
+        ]);
+      });
+    })
+    .join(" ");
+
+  return { shape: polygon(outline), caps: caps.join(" "), shade, gullies };
 }
 
 interface ForestOptions {
@@ -131,15 +240,27 @@ interface ForestOptions {
   skip?: (x: number, groundY: number) => boolean;
 }
 
+/** A circle, as part of a path. */
+const circle = ([cx, cy]: Point, r: number) =>
+  `M${pt([cx - r, cy])} A${round(r)} ${round(r)} 0 1 0 ${pt([cx + r, cy])} A${round(r)} ${round(r)} 0 1 0 ${pt([cx - r, cy])} Z`;
+
+/** The left half of a circle, the side away from the light. */
+const leftHalf = ([cx, cy]: Point, r: number) =>
+  `M${pt([cx, cy - r])} A${round(r)} ${round(r)} 0 0 0 ${pt([cx, cy + r])} Z`;
+
 /**
- * Trees standing on a ground line: pines (green all year) and round leafy
- * trees (whose colour follows the season), as two shapes.
+ * Trees standing on a ground line: pines (green all year), drawn as tiers
+ * of drooping boughs on a short trunk, and broadleaf trees (whose colour
+ * follows the season), drawn as a clump of rounded crowns. Each comes as
+ * shapes plus the half turned away from the light. The shapes' random
+ * numbers come from their own generator, so the trees stand where they
+ * always did.
  */
 function forest(random: Random, y: (x: number) => number, o: ForestOptions) {
   const { from = 0, to = W, gap, broadleaf, scale = 1, skip } = o;
+  const detail = seeded(round(from + to + gap[0] * 31 + broadleaf * 97));
   let pines = "";
   let leaves = "";
-  // The half of each tree away from the light (the left).
   let shade = "";
   for (let x = from; x < to; x += gap[0] + random() * (gap[1] - gap[0])) {
     const g = y(x) + 2;
@@ -148,20 +269,58 @@ function forest(random: Random, y: (x: number) => number, o: ForestOptions) {
     const height = (isLeafy ? 20 + random() * 26 : 30 + random() * 55) * scale;
     if (skip?.(x, g)) continue;
     if (isLeafy) {
-      const r = `${round(width / 2)} ${round(height)}`;
-      leaves += ` M${pt([x - width / 2, g])} A${r} 0 0 1 ${pt([x + width / 2, g])} Z`;
-      shade += ` M${pt([x, g])} L${pt([x, g - height])} A${r} 0 0 0 ${pt([x - width / 2, g])} Z`;
+      // A main crown and a few smaller ones round its lower sides.
+      const r = Math.min(width / 2, height / 2.2);
+      const crown: Point = [x, g - height + r];
+      const lobes: [Point, number][] = [[crown, r]];
+      const count = 2 + Math.floor(detail() * 3);
+      for (let k = 0; k < count; k++) {
+        const angle = Math.PI * (0.15 + detail() * 0.7) * (k % 2 ? 1 : -1);
+        const lobe = r * (0.5 + detail() * 0.2);
+        lobes.push([
+          [
+            crown[0] + Math.sin(angle) * r * 0.65,
+            crown[1] + Math.abs(Math.cos(angle)) * r * 0.45,
+          ],
+          lobe,
+        ]);
+      }
+      const trunk = Math.max(1, width * 0.06);
+      const crownFoot = Math.min(g, crown[1] + r * 0.8);
+      leaves += lobes.map(([c, lr]) => ` ${circle(c, lr)}`).join("");
+      shade += lobes.map(([c, lr]) => ` ${leftHalf(c, lr)}`).join("");
+      if (g - crownFoot > 1)
+        shade += ` ${polygon([
+          [x - trunk, crownFoot],
+          [x + trunk, crownFoot],
+          [x + trunk, g],
+          [x - trunk, g],
+        ])}`;
     } else {
+      // Tiers of boughs, widest at the bottom, each drooping at its tips.
+      const tiers = Math.min(5, 3 + Math.floor(height / 24));
+      const foot = g - height * 0.07;
+      const trunk = Math.max(1, width * 0.06);
+      const edge: Point[] = [];
+      for (let k = 1; k <= tiers; k++) {
+        const ty = g - height + ((foot - (g - height)) * k) / tiers;
+        const reach = (width / 2) * (k / tiers) * (0.85 + detail() * 0.3);
+        edge.push([reach, ty + height * 0.02]);
+        if (k < tiers) edge.push([reach * 0.45, ty - height * 0.02]);
+      }
+      const top: Point = [x, g - height];
+      const left = edge.map(([dx, ey]): Point => [x - dx, ey]);
+      const right = edge.map(([dx, ey]): Point => [x + dx, ey]).reverse();
       pines += ` ${polygon([
-        [x - width / 2, g],
-        [x, g - height],
-        [x + width / 2, g],
+        top,
+        ...left,
+        [x - trunk, foot],
+        [x - trunk, g],
+        [x + trunk, g],
+        [x + trunk, foot],
+        ...right,
       ])}`;
-      shade += ` ${polygon([
-        [x, g - height],
-        [x - width / 2, g],
-        [x, g],
-      ])}`;
+      shade += ` ${polygon([top, ...left, [x - trunk, foot], [x - trunk, g], [x, g]])}`;
     }
   }
   return { pines, leaves, shade };
@@ -174,9 +333,14 @@ const mountainScene = (() => {
   return {
     back: mountains(seeded(107), 185, 150, 105),
     far: mountains(random, 220, 140, 150),
-    mid: ridge(random, 262, 70, 120),
+    mid: treeline(seeded(207), curve(ridgePoints(random, 262, 70, 120)), 1),
     ground: ground(groundY),
     trees: forest(random, groundY, { gap: [8, 22], broadleaf: 0.35 }),
+    backTrees: forest(seeded(307), (x) => groundY(x) - 7, {
+      gap: [5, 13],
+      broadleaf: 0.3,
+      scale: 0.6,
+    }),
   };
 })();
 
@@ -205,8 +369,14 @@ const riverScene = (() => {
   return {
     back,
     far: mountains(random, 215, 95, 190),
-    mid: smoothHill(
-      range(-40, W + 40, 60).map((x): Point => [x, valley(x) - random() * 14]),
+    mid: treeline(
+      seeded(211),
+      curve(
+        range(-40, W + 40, 60).map(
+          (x): Point => [x, valley(x) - random() * 14],
+        ),
+      ),
+      0.9,
     ),
     ground: ground(groundY),
     water: polygon([...bank(-1), ...bank(1).reverse()]),
@@ -251,7 +421,11 @@ const lakeScene = (() => {
   return {
     back: mountains(seeded(123), 200, 150, 115),
     far: mountains(random, 240, 150, 170),
-    mid: ridge(random, LAKE_SHORE + 2, 22, 110),
+    mid: treeline(
+      seeded(223),
+      curve(ridgePoints(random, LAKE_SHORE + 2, 22, 110)),
+      0.8,
+    ),
     shores: `${ground(leftY, 0, reach)} ${ground(rightY, W - reach, W)}`,
     glints,
     trees: {
@@ -277,7 +451,7 @@ const hillScene = (() => {
   const near = forest(random, groundY, { gap: [40, 170], broadleaf: 0.75 });
   return {
     back: ridge(seeded(131), 212, 40, 200),
-    far: ridge(random, 238, 45, 260),
+    far: treeline(seeded(231), curve(ridgePoints(random, 238, 45, 260)), 0.45),
     mid: smoothHill(range(-60, W + 60, 60).map((x): Point => [x, midY(x)])),
     ground: ground(groundY),
     // The small trees on the far hill, and the nearer ones.
@@ -341,6 +515,16 @@ const fog = (top: number, foot: number) => ({
   fill: "url(#fog)",
   class: "fog",
 });
+
+/** Below a layer's foot the fog stays thick, so it never stops at a hard
+    line where the next layer does not yet cover it. */
+const fogBelow = (foot: number) => ({
+  x: -100,
+  y: foot,
+  width: W + 200,
+  height: H - foot + 10,
+  class: "fog-below",
+});
 ---
 
 <div class="backdrop" aria-hidden="true" transition:persist="backdrop">
@@ -398,20 +582,31 @@ const fog = (top: number, foot: number) => ({
       <path class="back" d={mountainScene.back.shape}></path>
       <path class="snowcap" d={mountainScene.back.caps}></path>
       <path class="shade" d={mountainScene.back.shade}></path>
+      <path class="gully" d={mountainScene.back.gullies}></path>
       <rect {...fog(110, 215)}></rect>
+      <rect {...fogBelow(215)}></rect>
     </g>
     <g class="layer layer-far">
       <path class="far" d={mountainScene.far.shape}></path>
       <path class="snowcap" d={mountainScene.far.caps}></path>
       <path class="shade" d={mountainScene.far.shade}></path>
+      <path class="gully" d={mountainScene.far.gullies}></path>
       <rect {...fog(150, 250)}></rect>
+      <rect {...fogBelow(250)}></rect>
     </g>
     <g class="layer layer-mid">
       <path class="mid" d={mountainScene.mid}></path>
       <rect {...fog(250, 330)}></rect>
+      <rect {...fogBelow(330)}></rect>
     </g>
     <g class="layer layer-near">
       <path class="ground" d={mountainScene.ground}></path>
+      <!-- A row of smaller trees further back, paler with distance. -->
+      <g class="distant">
+        <path class="leaf" d={mountainScene.backTrees.leaves}></path>
+        <path class="pine" d={mountainScene.backTrees.pines}></path>
+        <path class="tree-shade" d={mountainScene.backTrees.shade}></path>
+      </g>
       <path class="leaf" d={mountainScene.trees.leaves}></path>
       <path class="pine" d={mountainScene.trees.pines}></path>
       <path class="tree-shade" d={mountainScene.trees.shade}></path>
@@ -429,17 +624,22 @@ const fog = (top: number, foot: number) => ({
       <path class="back" d={riverScene.back.shape}></path>
       <path class="snowcap" d={riverScene.back.caps}></path>
       <path class="shade" d={riverScene.back.shade}></path>
+      <path class="gully" d={riverScene.back.gullies}></path>
       <rect {...fog(130, 205)}></rect>
+      <rect {...fogBelow(205)}></rect>
     </g>
     <g class="layer layer-far">
       <path class="far" d={riverScene.far.shape}></path>
       <path class="snowcap" d={riverScene.far.caps}></path>
       <path class="shade" d={riverScene.far.shade}></path>
+      <path class="gully" d={riverScene.far.gullies}></path>
       <rect {...fog(160, 235)}></rect>
+      <rect {...fogBelow(235)}></rect>
     </g>
     <g class="layer layer-mid">
       <path class="mid" d={riverScene.mid}></path>
       <rect {...fog(240, 300)}></rect>
+      <rect {...fogBelow(300)}></rect>
     </g>
     <g class="layer layer-near">
       <path class="ground" d={riverScene.ground}></path>
@@ -466,13 +666,17 @@ const fog = (top: number, foot: number) => ({
       <path class="back" d={lakeScene.back.shape}></path>
       <path class="snowcap" d={lakeScene.back.caps}></path>
       <path class="shade" d={lakeScene.back.shade}></path>
+      <path class="gully" d={lakeScene.back.gullies}></path>
       <rect {...fog(130, 225)}></rect>
+      <rect {...fogBelow(225)}></rect>
     </g>
     <g class="layer layer-far">
       <path class="far" d={lakeScene.far.shape}></path>
       <path class="snowcap" d={lakeScene.far.caps}></path>
       <path class="shade" d={lakeScene.far.shade}></path>
+      <path class="gully" d={lakeScene.far.gullies}></path>
       <rect {...fog(190, 270)}></rect>
+      <rect {...fogBelow(270)}></rect>
     </g>
     <g class="layer layer-mid">
       <path class="mid" d={lakeScene.mid}></path>
@@ -491,6 +695,7 @@ const fog = (top: number, foot: number) => ({
           <path class="far" d={lakeScene.far.shape}></path>
           <path class="snowcap" d={lakeScene.far.caps}></path>
           <path class="shade" d={lakeScene.far.shade}></path>
+          <path class="gully" d={lakeScene.far.gullies}></path>
         </g>
         <g class="layer layer-mid">
           <path class="mid" d={lakeScene.mid}></path>
@@ -514,10 +719,12 @@ const fog = (top: number, foot: number) => ({
     <g class="layer layer-back">
       <path class="back" d={hillScene.back}></path>
       <rect {...fog(190, 240)}></rect>
+      <rect {...fogBelow(240)}></rect>
     </g>
     <g class="layer layer-far">
       <path class="far" d={hillScene.far}></path>
       <rect {...fog(215, 285)}></rect>
+      <rect {...fogBelow(285)}></rect>
     </g>
     <g class="layer layer-mid">
       <path class="mid" d={hillScene.mid}></path>
@@ -525,6 +732,7 @@ const fog = (top: number, foot: number) => ({
       <path class="pine" d={hillScene.midTrees.pines}></path>
       <path class="tree-shade" d={hillScene.midTrees.shade}></path>
       <rect {...fog(315, 350)}></rect>
+      <rect {...fogBelow(350)}></rect>
     </g>
     <g class="layer layer-near">
       <path class="ground" d={hillScene.ground}></path>

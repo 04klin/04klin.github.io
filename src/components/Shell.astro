@@ -22,6 +22,7 @@ import { contact, features, shellHost } from "../site";
 import FileIcon from "./FileIcon.astro";
 import PhotosApp from "./PhotosApp.astro";
 import Prompt from "./Prompt.astro";
+import ResumeApp from "./ResumeApp.astro";
 import SettingsApp from "./SettingsApp.astro";
 import Window from "./Window.astro";
 
@@ -74,7 +75,8 @@ const shellData = {
 <!--
   A desktop: the landscape is the wallpaper, with three apps, each in its
   own movable window (scripts/windows.ts): the terminal (scripts/shell.ts),
-  Photos (PhotosApp.astro) and Settings (SettingsApp.astro). The terminal
+  Photos (PhotosApp.astro) and Settings (SettingsApp.astro). The PDF viewer
+  (ResumeApp.astro) has no icon: `open resume.pdf` in the terminal opens it. The terminal
   opens by itself; without JavaScript it is simply open, and the icons and
   other apps are not there.
 -->
@@ -140,8 +142,11 @@ const shellData = {
               )
             }
             <li>
-              <a class="ls-file" href={contact.resume} target="_blank"
-                ><FileIcon name="resume.pdf" />resume.pdf</a
+              <a
+                class="ls-file"
+                href={contact.resume}
+                target="_blank"
+                data-goto="resume"><FileIcon name="resume.pdf" />resume.pdf</a
               >
             </li>
             <li>
@@ -150,7 +155,7 @@ const shellData = {
                 href={contact.githubUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                ><FileIcon name="github.url" />github.url</a
+                data-goto="github"><FileIcon name="github.url" />github.url</a
               >
             </li>
             <li>
@@ -213,6 +218,7 @@ const shellData = {
   </Window>
 
   <PhotosApp albums={data} />
+  <ResumeApp />
   <SettingsApp />
 
   <!-- `ls -l` on the nas: the albums. -->

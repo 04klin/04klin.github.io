@@ -54,6 +54,31 @@ function dateLine() {
   return `${weekday} ${month} ${day} ${now.toTimeString().slice(0, 8)} ${zone} ${year}`;
 }
 
+/** As in the Mac's "Last login" line: Thu Nov 20 00:12:31 */
+function loginTime(when: Date) {
+  const [weekday, month, day] = when.toDateString().split(" ");
+  return `${weekday} ${month} ${day} ${when.toTimeString().slice(0, 8)}`;
+}
+
+/** Storage can be switched off (or throw), so reads and writes may fail. */
+type Kept = "sessionStorage" | "localStorage";
+
+function stored(storage: Kept, key: string) {
+  try {
+    return window[storage].getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function store(storage: Kept, key: string, value: string) {
+  try {
+    window[storage].setItem(key, value);
+  } catch {
+    // Without storage it is simply forgotten.
+  }
+}
+
 export function setupShell(): void {
   const term = document.querySelector<HTMLElement>("[data-term]");
   if (!term || "ready" in term.dataset) return;
@@ -84,8 +109,24 @@ export function setupShell(): void {
   // app); closing it ends the session. Work still running from an ended
   // session (typing, a login) checks this and stops.
   let session = 0;
-  const history: string[] = [];
-  let historyAt = 0;
+  // History lasts for the visit, across sessions and `reboot`.
+  const history: string[] = (() => {
+    try {
+      const saved = JSON.parse(stored("sessionStorage", "history") ?? "[]");
+      return Array.isArray(saved) ? saved.map(String) : [];
+    } catch {
+      return [];
+    }
+  })();
+  let historyAt = history.length;
+  function remember(line: string) {
+    if (!line || line === history.at(-1)) return;
+    history.push(line);
+    history.splice(0, history.length - 500);
+    store("sessionStorage", "history", JSON.stringify(history));
+  }
+  // Where `cd -` goes back to: where the visitor was before the last cd.
+  let oldpwd: { host: "home" | "nas"; dir: string | null } | null = null;
 
   const album = (name: string) => data.albums.find((a) => a.dir === name);
   const hostName = () => (host === "nas" ? "nas" : data.host);
@@ -158,9 +199,73 @@ export function setupShell(): void {
     return at === null ? null : album(at);
   }
 
+  /** A line of output ending in a link that opens in a new tab. */
+  function printLink(before: string, href: string, text = href) {
+    const line = document.createElement("p");
+    line.className = "term-out";
+    const link = document.createElement("a");
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = text;
+    line.append(before, link);
+    print(line);
+  }
+
   /** Opens a link in a new tab. */
   function visit(url: string) {
     window.open(url, "_blank", "noopener");
+    return true;
+  }
+
+  /** Leaves the nas for the home folder. */
+  async function logout() {
+    print("Connection to nas.local closed.", "dim");
+    [host, dir] = ["home", null];
+    await showSeason(null);
+    return true;
+  }
+
+  /** cd without the `-`: moves and reports errors; true if it got there. */
+  async function changeDir(target: string): Promise<boolean> {
+    if (host === "home") {
+      // Absolute paths to the home folder, or to the share it mounts.
+      const name = target
+        .replace(/\/$/, "")
+        .replace(/^\/home\/guest(?=\/|$)/, "~")
+        .replace(/^\/volume1\/photos(?=\/|$)/, "photos")
+        .replace(/^(~|\.)\//, "");
+      if (name === "~" || name === "." || name === "") return true;
+      // photos/ is a network share: going in logs in to the nas first.
+      const [first, ...rest] = name.split("/");
+      if (first === "photos") {
+        if (!(await commands.ssh(["nas"]))) return false;
+        return rest.length ? changeDir(rest.join("/")) : true;
+      }
+      if (name === "projects" && data.projects) {
+        location.href = "/projects";
+        return true;
+      }
+      print(
+        homeFiles.includes(name)
+          ? `cd: not a directory: ${target}`
+          : `cd: no such file or directory: ${target}`,
+        "err",
+      );
+      return false;
+    }
+    const found = resolve(target);
+    if (found === undefined) {
+      print(
+        target === ".." && dir === null
+          ? "cd: ..: Permission denied (guest share)"
+          : `cd: no such file or directory: ${target}`,
+        "err",
+      );
+      return false;
+    }
+    dir = found?.dir ?? null;
+    await showSeason(found?.season ?? null);
     return true;
   }
 
@@ -168,16 +273,17 @@ export function setupShell(): void {
     help() {
       [
         "ls            list this folder",
-        "cd <folder>   go into a folder (cd .. goes back)",
-        "open <file>   open a photo or a link",
+        "cd <folder>   go into a folder (cd .. goes up, cd - goes back)",
+        "open <file>   open a photo, the resume or a link",
         "cat <file>    print a file",
         "ssh nas       log in to the photo share (cd photos does too)",
         "exit          log out of the nas, or close the terminal",
+        "history       what you have typed (!! runs the last line again)",
         "clear         clear the screen",
         "reboot        restart",
       ].forEach((line) => print(line));
       print(
-        "Or just click a name. Tab completes, ↑ and ↓ go through history.",
+        "Or just click a name. Tab completes (twice lists), ↑ ↓ and Ctrl+R search history, Ctrl+D logs out.",
         "dim",
       );
       return true;
@@ -214,40 +320,23 @@ export function setupShell(): void {
 
     async cd(args) {
       const target = args[0] ?? "~";
-      if (host === "home") {
-        const name = target.replace(/\/$/, "");
-        if (name === "~" || name === ".") return true;
-        // photos/ is a network share: going in logs in to the nas first.
-        const [first, ...rest] = name.split("/");
-        if (first === "photos") {
-          if (!(await commands.ssh(["nas"]))) return false;
-          return rest.length ? commands.cd([rest.join("/")]) : true;
+      const before = { host, dir };
+      let ok: boolean;
+      if (target === "-") {
+        // Back to where the last cd came from, printing it, as bash does.
+        if (!oldpwd) {
+          print("cd: OLDPWD not set", "err");
+          return false;
         }
-        if (name === "projects" && data.projects) {
-          location.href = "/projects";
-          return true;
-        }
-        print(
-          homeFiles.includes(name)
-            ? `cd: not a directory: ${target}`
-            : `cd: no such file or directory: ${target}`,
-          "err",
-        );
-        return false;
-      }
-      const found = resolve(target);
-      if (found === undefined) {
-        print(
-          target === ".." && dir === null
-            ? "cd: ..: Permission denied (guest share)"
-            : `cd: no such file or directory: ${target}`,
-          "err",
-        );
-        return false;
-      }
-      dir = found?.dir ?? null;
-      await showSeason(found?.season ?? null);
-      return true;
+        const back = oldpwd;
+        if (back.host === "home") ok = host === "home" || (await logout());
+        else if (host === "home")
+          ok = await changeDir(back.dir ? `photos/${back.dir}` : "photos");
+        else ok = await changeDir(back.dir ? `~/${back.dir}` : "~");
+        if (ok) print(path());
+      } else ok = await changeDir(target);
+      if (ok && (host !== before.host || dir !== before.dir)) oldpwd = before;
+      return ok;
     },
 
     pwd() {
@@ -297,9 +386,20 @@ export function setupShell(): void {
         closeApp("terminal");
         return false;
       }
-      print("Connection to nas.local closed.", "dim");
-      [host, dir] = ["home", null];
-      await showSeason(null);
+      return logout();
+    },
+
+    history(args) {
+      if (args[0] === "-c") {
+        history.length = 0;
+        historyAt = 0;
+        store("sessionStorage", "history", "[]");
+        return true;
+      }
+      const width = String(history.length).length;
+      history.forEach((line, i) =>
+        print(`${String(i + 1).padStart(width + 2)}  ${line}`),
+      );
       return true;
     },
 
@@ -309,8 +409,12 @@ export function setupShell(): void {
         print("usage: open <file>", "err");
         return false;
       }
+      // The resume opens in the PDF viewer from anywhere, the nas included.
+      if (/^((~|\/home\/guest)\/)?resume(\.pdf)?$/.test(target)) {
+        openApp("resume");
+        return true;
+      }
       if (host === "home") {
-        if (target === "resume.pdf") return visit(data.resume);
         if (target === "github.url") return visit(data.github);
         if (target === "email.txt") return commands.cat(args);
         if (target.replace(/\/$/, "") === "photos") return commands.cd(args);
@@ -358,8 +462,23 @@ export function setupShell(): void {
         print(data.email);
         return true;
       }
+      // A .url file is an internet shortcut; its address is the link.
       if (host === "home" && target === "github.url") {
-        print(data.github);
+        print("[InternetShortcut]");
+        printLink("URL=", data.github);
+        return true;
+      }
+      // A pdf is binary, so cat shows its header and a link to open it.
+      if (host === "home" && target === "resume.pdf") {
+        print("%PDF-1.7", "dim");
+        const line = document.createElement("p");
+        line.className = "term-out";
+        const link = document.createElement("a");
+        link.href = data.resume;
+        link.dataset.goto = "open-resume";
+        link.textContent = "open resume.pdf";
+        line.append("cat: resume.pdf: binary file. Try: ", link);
+        print(line);
         return true;
       }
       if (host === "nas") {
@@ -430,19 +549,57 @@ export function setupShell(): void {
   commands.logout = commands.exit;
   commands.cls = commands.clear;
 
-  /** Runs one line (commands joined with && run until one fails). */
-  async function run(line: string) {
+  /**
+   * Bash's history expansion: !! is the last line, !n line n, !-n the nth
+   * from the end, !text the latest line starting with text. Null (and an
+   * error) if one is not there.
+   */
+  function expand(line: string): string | null {
+    let missing: string | null = null;
+    const expanded = line.replace(
+      /!(!|-?\d+|[^\s!=&;|()"']+)/g,
+      (event, key: string) => {
+        let found: string | undefined;
+        if (key === "!") found = history.at(-1);
+        else if (/^-\d+$/.test(key)) found = history.at(Number(key));
+        else if (/^\d+$/.test(key)) found = history[Number(key) - 1];
+        else found = history.findLast((h) => h.startsWith(key));
+        if (found === undefined) missing ??= event;
+        return found ?? event;
+      },
+    );
+    if (missing) {
+      print(`bash: ${missing}: event not found`, "err");
+      return null;
+    }
+    // Bash prints the line it is about to run.
+    if (expanded !== line) print(expanded);
+    return expanded;
+  }
+
+  /**
+   * Runs one line (commands joined with && run until one fails). `shown` is
+   * what appears after the prompt, if not the line itself (Ctrl+D shows
+   * nothing); only lines shown as typed go into the history.
+   */
+  async function run(typed: string, shown = typed) {
     const mine = session;
     const block = document.createElement("div");
     block.className = "term-block";
     const echo = document.createElement("p");
     echo.className = "term-line";
-    echo.append(prompt(), ` ${line}`);
+    echo.append(prompt(), shown ? ` ${shown}` : "");
     block.append(echo);
     log.append(block);
     out = block;
-    if (line.trim()) history.push(line.trim());
+    const line = shown === typed ? expand(typed) : typed;
+    if (line !== null && shown === typed) remember(line.trim());
     historyAt = history.length;
+    if (line === null) {
+      updatePrompt();
+      reveal(block);
+      return;
+    }
 
     for (const part of line.split("&&")) {
       const [name, ...args] = part.trim().split(/\s+/);
@@ -506,6 +663,9 @@ export function setupShell(): void {
   /** What a click on a name in the output runs, from where the visitor is. */
   function linesFor(goto: string): string[] {
     if (goto === "email") return ["cat email.txt"];
+    if (goto === "resume") return ["open resume.pdf"];
+    if (goto === "open-resume") return ["open resume.pdf"];
+    if (goto === "github") return ["cat github.url"];
     if (goto === "photos" || goto === "albums") {
       if (host === "home") return ["cd photos && ls -l"];
       return dir ? ["cd .. && ls -l"] : ["ls -l"];
@@ -535,6 +695,8 @@ export function setupShell(): void {
     }
     const link = target.closest<HTMLElement>("[data-goto]");
     if (link) {
+      // Some names are real links too, for when there is no JavaScript.
+      event.preventDefault();
       perform(linesFor(link.dataset.goto ?? ""));
       return;
     }
@@ -554,8 +716,11 @@ export function setupShell(): void {
     ];
   }
 
-  /** Tab: completes the last word, as far as the matches agree. */
-  function complete() {
+  /**
+   * Tab: completes the last word, as far as the matches agree, and returns
+   * the matches.
+   */
+  function complete(): string[] {
     const words = input.value.split(" ");
     const word = words.at(-1) ?? "";
     // The folder part of a path (cd ../tok) stays as typed.
@@ -569,29 +734,134 @@ export function setupShell(): void {
       names = folder === undefined ? [] : namesIn(folder ?? null);
     }
     const matches = names.filter((name) => name.startsWith(partial));
-    if (matches.length === 0) return;
+    if (matches.length === 0) return matches;
     let common = matches[0];
     for (const name of matches)
       while (!name.startsWith(common)) common = common.slice(0, -1);
     const done = matches.length === 1 && !common.endsWith("/");
     words[words.length - 1] = base + common + (done ? " " : "");
     input.value = words.join(" ");
+    return matches;
+  }
+
+  /** A line in the log as the prompt showed it (for ^C and Tab lists). */
+  function echoLine(text: string) {
+    const line = document.createElement("p");
+    line.className = "term-line";
+    line.append(prompt(), text ? ` ${text}` : "");
+    log.append(line);
+  }
+
+  function submit(typed: string, shown = typed) {
+    input.value = "";
+    busy = true;
+    run(typed, shown).finally(() => {
+      busy = false;
+      focusInput();
+    });
+  }
+
+  // A second Tab that completes nothing more lists the choices, as in bash.
+  let tabbed = false;
+
+  // Ctrl+R: the reverse history search. While it is on, typing goes into
+  // the query and the input shows the latest line that contains it.
+  let search: { query: string; at: number; before: string } | null = null;
+
+  function showSearch() {
+    if (!search) return;
+    const failed = search.query && search.at < 0;
+    const label = document.createElement("span");
+    label.textContent = `(${failed ? "failed " : ""}reverse-i-search)\`${search.query}': `;
+    promptSlot.replaceChildren(label);
+    if (search.at >= 0) input.value = history[search.at];
+  }
+
+  /** The newest line at or before `from` containing the query, or -1. */
+  function findBack(query: string, from: number) {
+    for (let i = Math.min(from, history.length - 1); i >= 0; i--)
+      if (history[i].includes(query)) return i;
+    return -1;
+  }
+
+  /** Ends the search, keeping the line found (or the one from before). */
+  function endSearch(keep: boolean) {
+    if (!search) return;
+    if (!keep) input.value = search.before;
+    // ↑ then goes on from the line found.
+    else if (search.at >= 0) historyAt = search.at;
+    search = null;
+    updatePrompt();
+  }
+
+  /** Handles a key while searching; false lets the usual handling go on. */
+  function searchKey(event: KeyboardEvent) {
+    if (!search) return false;
+    if (event.ctrlKey && event.key === "r") {
+      const older = findBack(search.query, search.at - 1);
+      if (older >= 0) search.at = older;
+    } else if (event.ctrlKey && (event.key === "g" || event.key === "c")) {
+      endSearch(false);
+    } else if (event.key === "Enter") {
+      endSearch(true);
+      return false;
+    } else if (event.key === "Backspace") {
+      search.query = search.query.slice(0, -1);
+      search.at = search.query
+        ? findBack(search.query, history.length - 1)
+        : -1;
+    } else if (
+      event.key.length === 1 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      search.query += event.key;
+      const from = search.at >= 0 ? search.at : history.length - 1;
+      search.at = findBack(search.query, from);
+    } else if (["Shift", "Control", "Alt", "Meta"].includes(event.key)) {
+      return true;
+    } else {
+      // Any other key (Esc, arrows, Tab) keeps the line to edit.
+      endSearch(true);
+      if (event.key === "Escape") event.preventDefault();
+      return event.key === "Escape";
+    }
+    event.preventDefault();
+    showSearch();
+    return true;
   }
 
   input.addEventListener("keydown", (event) => {
     if (busy) return;
+    if (searchKey(event)) return;
+    if (event.key !== "Tab") tabbed = false;
     if (event.key === "Enter") {
       event.preventDefault();
-      const line = input.value;
-      input.value = "";
-      busy = true;
-      run(line).finally(() => {
-        busy = false;
-        focusInput();
-      });
+      submit(input.value);
     } else if (event.key === "Tab" && input.value) {
       event.preventDefault();
-      complete();
+      const before = input.value;
+      const matches = complete();
+      if (matches.length < 2 || input.value !== before) return;
+      if (!tabbed) {
+        tabbed = true;
+        return;
+      }
+      echoLine(input.value);
+      out = log;
+      print(matches.join("  "));
+      inputLine.scrollIntoView({ block: "nearest" });
+    } else if (event.ctrlKey && event.key === "r") {
+      event.preventDefault();
+      search = { query: "", at: -1, before: input.value };
+      input.value = "";
+      showSearch();
+    } else if (event.ctrlKey && event.key === "d") {
+      // On an empty line, end of input: log out, as bash and zsh do.
+      if (input.value) return;
+      event.preventDefault();
+      submit("exit", "");
     } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
       historyAt = Math.max(
@@ -611,10 +881,7 @@ export function setupShell(): void {
       !getSelection()?.toString()
     ) {
       event.preventDefault();
-      const line = document.createElement("p");
-      line.className = "term-line";
-      line.append(prompt(), ` ${input.value}^C`);
-      log.append(line);
+      echoLine(`${input.value}^C`);
       input.value = "";
     }
   });
@@ -651,7 +918,19 @@ export function setupShell(): void {
     input.value = "";
     log.replaceChildren();
     [host, dir] = ["home", null];
+    oldpwd = null;
+    search = null;
+    tabbed = false;
+    historyAt = history.length;
     updatePrompt();
+    // The time of the visitor's last session, as a Mac terminal shows it
+    // (the first time ever, this one), on a new tty each session.
+    const last = Number(stored("localStorage", "lastLogin")) || Date.now();
+    store("localStorage", "lastLogin", String(Date.now()));
+    out = log;
+    print(
+      `Last login: ${loginTime(new Date(last))} on ttys${String(mine - 1).padStart(3, "0")}`,
+    );
     inputLine.hidden = false;
     await sleep(300);
     if (mine !== session) return;

@@ -111,6 +111,12 @@ export function setupPhotos() {
   registerApp("photos", {
     // A fresh start shows the newest album.
     start: () => {
+      // The thumbnails are lazy, so a hidden album's would only start
+      // loading when it is picked; fetch them all now instead, so switching
+      // albums shows the grid at once.
+      root!
+        .querySelectorAll<HTMLImageElement>("img[loading='lazy']")
+        .forEach((img) => (img.loading = "eager"));
       if (!current && albums[0]) showAlbum(albums[0].dir);
     },
     end: () => {

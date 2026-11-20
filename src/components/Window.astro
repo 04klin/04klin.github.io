@@ -2,7 +2,8 @@
 /**
  * A desktop window (scripts/windows.ts): a title bar with the three lights
  * (close, minimize, zoom) and a title, then the app in the slot. Drag the
- * title bar to move it; double-click it to fill the screen.
+ * title bar to move it, or an edge or corner to resize it; double-click the
+ * title bar to fill the screen.
  */
 interface Props {
   /** The app's name, as desktop icons and scripts refer to it. */
@@ -14,6 +15,9 @@ interface Props {
 }
 
 const { app, title, open = false } = Astro.props;
+
+/** The edges and corners that resize the window (by compass direction). */
+const edges = ["n", "e", "s", "w", "ne", "se", "sw", "nw"];
 ---
 
 <div
@@ -49,4 +53,13 @@ const { app, title, open = false } = Astro.props;
     <p class="window-title" data-window-title>{title}</p>
   </div>
   <slot />
+  {
+    edges.map((edge) => (
+      <div
+        class={`resize resize-${edge}`}
+        data-resize={edge}
+        aria-hidden="true"
+      />
+    ))
+  }
 </div>

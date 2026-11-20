@@ -9,6 +9,7 @@ import Shell from "../components/Shell.astro";
 
 <script>
   import { setupPhotos } from "../scripts/photos";
+  import { setupResume } from "../scripts/resume";
   import { setupSettings } from "../scripts/settings";
   import { setupShell } from "../scripts/shell";
   import { setupWindows } from "../scripts/windows";
@@ -16,6 +17,7 @@ import Shell from "../components/Shell.astro";
   document.addEventListener("astro:page-load", () => {
     setupWindows();
     setupPhotos();
+    setupResume();
     setupSettings();
     setupShell();
   });

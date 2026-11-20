@@ -5,6 +5,9 @@
 :root {
   color-scheme: dark;
 
+  /* How long a change of season takes (the animation section). */
+  --season-fade: 0.8s;
+
   --bg: #0d0e0d;
   --surface: rgba(255, 255, 255, 0.035);
   --border: rgba(255, 255, 255, 0.09);
@@ -198,6 +201,76 @@ p {
   initial-value: 15%;
 }
 
+/* The season's colours, registered so a change of season glides from one
+   palette to the next (the transition is in the animation section) instead
+   of crossfading the whole page. The initial values are summer's. */
+@property --sky-top {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #9ecae3;
+}
+
+@property --sky-mid {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #c8e0e8;
+}
+
+@property --sky-bottom {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e8f0e4;
+}
+
+@property --far-day {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #c9dad6;
+}
+
+@property --mid-day {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #afcab7;
+}
+
+@property --ground-day {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #9cbea5;
+}
+
+@property --pine-day {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #8fb398;
+}
+
+@property --leaf-day {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #a6c897;
+}
+
+@property --water-day {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #b3d3e0;
+}
+
+@property --snow-day {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f4f8f9;
+}
+
+@property --moonlit {
+  /* Night: 1 in winter, when the snow catches the moonlight. */
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
 /* Each season's daytime colours: hazy and light, so dark text stays readable
    over them. Summer is also the fallback without JavaScript. */
 .backdrop,
@@ -252,6 +325,8 @@ p {
   --leaf-day: #c9c4be;
   --water-day: #c9dde8;
   --snow-day: #f8fbfc;
+  /* By night, the snow catches the moonlight. */
+  --moonlit: 1;
 }
 
 /* Night: the same colours, mostly sunk into the dark, nearer layers more.
@@ -260,17 +335,17 @@ p {
   --night: #080d0b;
   --far: color-mix(
     in srgb,
-    var(--far-day) calc(10% * var(--lift)),
+    var(--far-day) calc((10% + 2% * var(--moonlit)) * var(--lift)),
     var(--night)
   );
   --mid: color-mix(
     in srgb,
-    var(--mid-day) calc(7% * var(--lift)),
+    var(--mid-day) calc((7% + 5% * var(--moonlit)) * var(--lift)),
     var(--night)
   );
   --ground: color-mix(
     in srgb,
-    var(--ground-day) calc(4% * var(--lift)),
+    var(--ground-day) calc((4% + 8% * var(--moonlit)) * var(--lift)),
     var(--night)
   );
   --pine: color-mix(
@@ -290,7 +365,7 @@ p {
   );
   --snow: color-mix(
     in srgb,
-    var(--snow-day) calc(22% * var(--lift)),
+    var(--snow-day) calc((22% - 7% * var(--moonlit)) * var(--lift)),
     var(--night)
   );
   --mist: 200, 222, 210;
@@ -316,30 +391,6 @@ p {
   position: fixed;
   inset: 0;
   overflow: hidden;
-}
-
-/* Snow catches the moonlight. */
-[data-season="winter"]:not([data-theme="day"]) .backdrop {
-  --far: color-mix(
-    in srgb,
-    var(--far-day) calc(12% * var(--lift)),
-    var(--night)
-  );
-  --snow: color-mix(
-    in srgb,
-    var(--snow-day) calc(15% * var(--lift)),
-    var(--night)
-  );
-  --mid: color-mix(
-    in srgb,
-    var(--mid-day) calc(12% * var(--lift)),
-    var(--night)
-  );
-  --ground: color-mix(
-    in srgb,
-    var(--ground-day) calc(12% * var(--lift)),
-    var(--night)
-  );
 }
 
 /* By day, --tint is the low sun's colour (peach in the morning, gold in the
@@ -408,6 +459,19 @@ p {
   inset: 0;
 }
 
+/* A fine grain over the whole scene, like paper or film, so the flat
+   colours read as painted light rather than vector fills. The noise is
+   rendered once as an image, so it costs nothing per frame. */
+.backdrop::after {
+  content: "";
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 1.4 -0.45'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  position: absolute;
+  inset: 0;
+}
+
 /* The moon and the sun share a spot in the sky. */
 .moon,
 .sun {
@@ -460,7 +524,9 @@ p {
   inset: 0;
 }
 
-.clouds span {
+.clouds span,
+.clouds span::before,
+.clouds span::after {
   border-radius: 50%;
   background-image: radial-gradient(
     closest-side,
@@ -468,7 +534,30 @@ p {
     rgba(255, 255, 255, 0)
   );
   position: absolute;
+}
+
+.clouds span {
   will-change: transform;
+}
+
+/* Each cloud heaps up into a couple of soft billows over its flat base. */
+.clouds span::before,
+.clouds span::after {
+  content: "";
+}
+
+.clouds span::before {
+  width: 50%;
+  height: 150%;
+  bottom: 30%;
+  left: 14%;
+}
+
+.clouds span::after {
+  width: 38%;
+  height: 120%;
+  bottom: 28%;
+  left: 48%;
 }
 
 /* Only the chosen landscape is shown; mountains without JavaScript. */
@@ -502,6 +591,13 @@ p {
   opacity: calc(var(--shade-strength) * 0.8);
 }
 
+/* Gullies furrowing the lit faces of the mountains: fainter than the
+   shaded faces. */
+.landscape .gully {
+  fill: var(--shade-color);
+  opacity: calc(var(--shade-strength) * 0.45);
+}
+
 /* Fog pooling at the foot of each layer, so distance fades into the sky. */
 .fog-stop {
   stop-color: var(--haze);
@@ -509,6 +605,16 @@ p {
 
 .fog-thick {
   stop-opacity: var(--fog-strength);
+}
+
+.landscape .fog-below {
+  fill: var(--haze);
+  opacity: var(--fog-strength);
+}
+
+/* Trees further back, half lost in the haze. */
+.landscape .distant {
+  opacity: 0.55;
 }
 
 /* The nearest ground darkens towards the bottom edge. */
@@ -576,11 +682,11 @@ p {
 
 .landscape .snowcap {
   fill: var(--snow);
-  display: none;
+  opacity: 0;
 }
 
 [data-season="winter"] .landscape .snowcap {
-  display: inline;
+  opacity: 1;
 }
 
 /* Soft bands of fog, one behind the hills and one in front of them. */
@@ -872,7 +978,8 @@ p {
 
 /* A window: a title bar with the three lights, then the app. It sits
    centred in the space right of the icons until it is dragged by its title
-   bar (data-placed, at --x and --y); "zoom" makes it fill the screen.
+   bar (data-placed, at --x and --y) or resized by an edge or corner
+   (data-sized, --w by --h); "zoom" makes it fill the screen.
    Closed or minimized, it is hidden. windows.ts sets z-index to stack them. */
 .window {
   --left-room: 120px;
@@ -914,6 +1021,16 @@ p {
   left: calc(50% + 200px);
 }
 
+/* The PDF viewer (the resume): a page-shaped window, a little left of
+   centre so it does not sit squarely over Photos. */
+.window[data-app="resume"] {
+  width: min(100% - 2 * var(--left-room), 760px);
+  height: calc(100% - 100px);
+  background-color: var(--panel-solid);
+  top: 55px;
+  left: calc(50% - 40px);
+}
+
 /* With another app open as well, the terminal is solid too, so the window
    behind it does not show through its text. */
 .desktop:has(.window:not([data-app="terminal"])[data-open])
@@ -925,6 +1042,17 @@ p {
   top: var(--y);
   left: var(--x);
   translate: none;
+}
+
+.window[data-sized] {
+  width: var(--w);
+  height: var(--h);
+  max-height: none;
+}
+
+/* No stray text selection while an edge is being dragged. */
+.window[data-resizing] {
+  user-select: none;
 }
 
 [data-js] .window:not([data-open]) {
@@ -939,6 +1067,84 @@ p {
   top: 0;
   left: 0;
   translate: none;
+}
+
+/* The edges and corners that resize a window: thin strips just inside
+   its border, over the app. Only with JavaScript, and not when the window
+   fills the screen. */
+.resize {
+  z-index: 5;
+  touch-action: none;
+  display: none;
+  position: absolute;
+}
+
+[data-js] .window:not([data-zoomed]) .resize {
+  display: block;
+}
+
+.resize-n,
+.resize-s {
+  height: 6px;
+  cursor: ns-resize;
+  left: 12px;
+  right: 12px;
+}
+
+.resize-e,
+.resize-w {
+  width: 6px;
+  cursor: ew-resize;
+  top: 12px;
+  bottom: 12px;
+}
+
+.resize-n {
+  top: 0;
+}
+
+.resize-s {
+  bottom: 0;
+}
+
+.resize-e {
+  right: 0;
+}
+
+.resize-w {
+  left: 0;
+}
+
+.resize-ne,
+.resize-se,
+.resize-sw,
+.resize-nw {
+  width: 12px;
+  height: 12px;
+}
+
+.resize-ne {
+  cursor: nesw-resize;
+  top: 0;
+  right: 0;
+}
+
+.resize-se {
+  cursor: nwse-resize;
+  bottom: 0;
+  right: 0;
+}
+
+.resize-sw {
+  cursor: nesw-resize;
+  bottom: 0;
+  left: 0;
+}
+
+.resize-nw {
+  cursor: nwse-resize;
+  top: 0;
+  left: 0;
 }
 
 /* Drag it to move the window. */
@@ -1515,6 +1721,35 @@ p {
   outline-offset: 2px;
 }
 
+/* The PDF viewer: the PDF in the browser's own viewer, or a note with
+   links where there is none. */
+.resume {
+  min-height: 0;
+  flex-direction: column;
+  flex: 1;
+  display: flex;
+}
+
+.resume-doc {
+  width: 100%;
+  min-height: 0;
+  background-color: #fff;
+  border: 0;
+  flex: 1;
+  display: block;
+}
+
+.resume-doc[hidden],
+.resume-fallback[hidden] {
+  display: none;
+}
+
+.resume-fallback {
+  color: var(--muted);
+  margin: 0;
+  padding: 20px 16px;
+}
+
 /* One photo, large, over the album (inside the window). */
 .photos-viewer {
   z-index: 2;
@@ -1653,12 +1888,18 @@ p {
   .window,
   .window[data-app="photos"],
   .window[data-app="settings"],
-  .window[data-placed] {
+  .window[data-app="resume"],
+  .window[data-placed],
+  .window[data-sized] {
     width: calc(100% - 20px);
     height: calc(100% - 92px);
     top: 82px;
     left: 10px;
     translate: none;
+  }
+
+  [data-js] .window:not([data-zoomed]) .resize {
+    display: none;
   }
 
   .photos {
@@ -1880,8 +2121,43 @@ p {
 
   [data-season="spring"] .petals,
   [data-season="autumn"] .leaves,
-  [data-season="winter"] .snow {
+  [data-season="winter"] .snow,
+  [data-season="summer"]:not([data-theme="day"]) .fireflies {
     display: block;
+    opacity: 1;
+  }
+
+  /* A change of season (an album, or Settings) glides the landscape's
+     colours to the new season's, fades the snow caps, and fades the
+     weather in and out. The page stays live meanwhile, unlike the
+     crossfade for the theme and the landscape. */
+  .backdrop {
+    transition-property:
+      --sky-top, --sky-mid, --sky-bottom, --far-day, --mid-day, --ground-day,
+      --pine-day, --leaf-day, --water-day, --snow-day, --moonlit;
+    transition-duration: var(--season-fade);
+    transition-timing-function: ease-in-out;
+  }
+
+  .landscape .snowcap {
+    transition: opacity var(--season-fade) ease-in-out;
+  }
+
+  .falling,
+  .fireflies {
+    opacity: 0;
+    transition:
+      opacity var(--season-fade) ease-in-out,
+      display var(--season-fade) allow-discrete;
+  }
+
+  @starting-style {
+    [data-season="spring"] .petals,
+    [data-season="autumn"] .leaves,
+    [data-season="winter"] .snow,
+    [data-season="summer"]:not([data-theme="day"]) .fireflies {
+      opacity: 0;
+    }
   }
 
   /* Durations and delays are set on each one in Backdrop.astro. */

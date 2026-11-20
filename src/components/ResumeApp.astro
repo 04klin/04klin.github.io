@@ -1,0 +1,25 @@
+---
+/*
+ * The PDF viewer (scripts/resume.ts), which the terminal opens with
+ * `open resume.pdf` (there is no desktop icon): the resume in the
+ * browser's own PDF viewer, which has its own download and print buttons.
+ * The PDF only loads when the window is opened. Where the browser cannot
+ * show PDFs inside a page (most phones), a note links to the file instead.
+ */
+import { contact } from "../site";
+import Window from "./Window.astro";
+---
+
+<Window app="resume" title="resume.pdf">
+  <div class="resume" data-resume={contact.resume}>
+    <iframe class="resume-doc" title="Resume" data-resume-doc hidden></iframe>
+    <p class="resume-fallback" data-resume-fallback hidden>
+      This browser can't show PDFs here.
+      <a href={contact.resume} target="_blank" rel="noopener noreferrer"
+        >Open resume.pdf</a
+      > or <a href={contact.resume} download="Kevin-Lin-resume.pdf"
+        >download it</a
+      >.
+    </p>
+  </div>
+</Window>
