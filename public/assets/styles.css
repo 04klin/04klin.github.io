@@ -1347,6 +1347,16 @@ p {
   color: var(--err);
 }
 
+/* A "Key : value" line (exif): a long value wraps under itself, not under
+   the key. */
+.term-pair {
+  display: flex;
+}
+
+.term-pair > :first-child {
+  flex: none;
+}
+
 .term a {
   color: var(--accent);
   text-underline-offset: 4px;
@@ -1406,8 +1416,16 @@ p {
   color: var(--faint);
 }
 
-.ls-count {
+.ls-count,
+.ls-num {
   text-align: right;
+}
+
+/* `ls -l` in an album: a contact sheet, with each photo's shutter speed,
+   aperture, ISO, focal length and date before its name. */
+.ls-exif {
+  grid-template-columns: repeat(6, auto) minmax(0, 1fr);
+  font-variant-numeric: tabular-nums;
 }
 
 .ls-dir,
@@ -1785,7 +1803,23 @@ p {
   text-align: center;
   font-family: var(--font-mono);
   flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   font-size: 0.8125rem;
+  display: flex;
+}
+
+/* The camera settings under the caption, spaced like the readout along the
+   bottom of a viewfinder. The viewer is always dark, so its own colour. */
+.viewer-exif {
+  color: #848c83;
+  font-variant-numeric: tabular-nums;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 2.5ch;
+  font-size: 0.75rem;
+  display: flex;
 }
 
 .viewer-button {
@@ -1961,6 +1995,17 @@ p {
   }
 
   .ls-perm {
+    display: none;
+  }
+
+  /* The contact sheet keeps shutter, aperture and focal length. */
+  .ls-exif {
+    grid-template-columns: repeat(3, auto) minmax(0, 1fr);
+    gap: 0 1.5ch;
+  }
+
+  .ls-exif .ls-iso,
+  .ls-exif .ls-taken {
     display: none;
   }
 

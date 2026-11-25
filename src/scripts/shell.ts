@@ -3,7 +3,8 @@
  * it types `cat /etc/motd` (the login notice, with the greeting) and `ls`; from there visitors click names in the output, which types
  * and runs the matching command, or type commands themselves (help lists
  * them). There are two hosts: the home folder on the site, and the "nas",
- * a read-only photo share where each album is a folder. Going into an album
+ * a read-only photo share where each album is a folder. In an album,
+ * `ls -l` and `exif` show the camera settings each photo was taken with. Going into an album
  * gives the backdrop that album's season; leaving brings the visitor's own
  * season back.
  *
@@ -16,11 +17,22 @@ import { showSeason } from "./scene";
 import type { Season } from "./seasons";
 import { closeApp, isActive, openApp, registerApp } from "./windows";
 
+/** A photo's camera settings, read from its EXIF at build time (exif.ts). */
+interface Exif {
+  camera: string | null;
+  lens: string | null;
+  shutter: string | null;
+  aperture: string | null;
+  iso: string | null;
+  focal: string | null;
+  taken: string | null;
+}
+
 interface AlbumData {
   dir: string;
   season: Season | null;
   link: string | null;
-  photos: { name: string; alt: string; full: string }[];
+  photos: { name: string; alt: string; full: string; exif: Exif }[];
 }
 
 interface ShellData {
@@ -125,6 +137,8 @@ export function setupShell(): void {
     history.splice(0, history.length - 500);
     store("sessionStorage", "history", JSON.stringify(history));
   }
+  // Whether an album's `ls` has pointed out `ls -l` yet (once a visit).
+  let sheetHinted = false;
   // Where `cd -` goes back to: where the visitor was before the last cd.
   let oldpwd: { host: "home" | "nas"; dir: string | null } | null = null;
 
@@ -197,6 +211,21 @@ export function setupShell(): void {
       }
     }
     return at === null ? null : album(at);
+  }
+
+  /**
+   * A photo on the nas by its path (a name in this album, album/name,
+   * ~/album/name or /volume1/photos/album/name), or null.
+   */
+  function photoAt(target: string) {
+    const slash = target.lastIndexOf("/");
+    const folder =
+      slash >= 0 ? resolve(target.slice(0, slash)) : dir ? album(dir) : null;
+    if (!folder) return null;
+    const index = folder.photos.findIndex(
+      (p) => p.name === target.slice(slash + 1),
+    );
+    return index >= 0 ? { album: folder, index } : null;
   }
 
   /** A line of output ending in a link that opens in a new tab. */
@@ -276,6 +305,7 @@ export function setupShell(): void {
         "cd <folder>   go into a folder (cd .. goes up, cd - goes back)",
         "open <file>   open a photo, the resume or a link",
         "cat <file>    print a file",
+        "exif <photo>  how a photo was taken (ls -l in an album lists them all)",
         "ssh nas       log in to the photo share (cd photos does too)",
         "exit          log out of the nas, or close the terminal",
         "history       what you have typed (!! runs the last line again)",
@@ -314,7 +344,68 @@ export function setupShell(): void {
         );
         return false;
       }
-      print(template(found ? `album:${found.dir}` : "albums"));
+      // -l in an album: the contact sheet, with each photo's settings.
+      const long = args.some((a) => /^-\w*l/.test(a));
+      print(
+        template(found ? `album${long ? "-long" : ""}:${found.dir}` : "albums"),
+      );
+      // The first album's thumbnails point out the contact sheet, once.
+      if (found && !long && !sheetHinted) {
+        sheetHinted = true;
+        const hint = document.createElement("p");
+        hint.className = "term-dim";
+        const run = document.createElement("button");
+        run.type = "button";
+        run.className = "ls-file";
+        run.dataset.goto = "sheet";
+        run.textContent = "ls -l";
+        hint.append("# ", run, " shows how each was shot");
+        print(hint);
+      }
+      return true;
+    },
+
+    // A photo's camera settings, laid out as exiftool prints them.
+    exif(args) {
+      const target = args.find((a) => !a.startsWith("-"));
+      if (!target) {
+        print("usage: exif <photo>", "err");
+        return false;
+      }
+      const found = host === "nas" ? photoAt(target) : null;
+      if (!found) {
+        print(
+          host === "home"
+            ? `exif: ${target}: No such file. The photos are on the nas: cd photos`
+            : `exif: ${target}: No such file`,
+          "err",
+        );
+        return false;
+      }
+      const { exif, name } = found.album.photos[found.index];
+      const rows: [string, string | null][] = [
+        ["File Name", name],
+        ["Camera Model Name", exif.camera],
+        ["Lens Model", exif.lens],
+        ["Focal Length", exif.focal],
+        ["Exposure Time", exif.shutter],
+        ["F Number", exif.aperture],
+        ["ISO", exif.iso?.replace(/^ISO /, "") ?? null],
+        ["Date Taken", exif.taken],
+      ];
+      const shown = rows.filter((row): row is [string, string] => !!row[1]);
+      const width = Math.max(...shown.map(([key]) => key.length));
+      for (const [key, value] of shown) {
+        const line = document.createElement("p");
+        line.className = "term-out term-pair";
+        const label = document.createElement("span");
+        label.className = "term-dim";
+        label.textContent = `${key.padEnd(width)} : `;
+        const text = document.createElement("span");
+        text.textContent = value;
+        line.append(label, text);
+        print(line);
+      }
       return true;
     },
 
@@ -492,7 +583,14 @@ export function setupShell(): void {
           return true;
         }
       }
-      if (/\.(pdf|jpe?g)$/.test(target)) {
+      if (/\.jpe?g$/.test(target)) {
+        print(
+          `cat: ${target}: binary file. Try: open ${target}, or exif ${target}`,
+          "err",
+        );
+        return false;
+      }
+      if (/\.pdf$/.test(target)) {
         print(`cat: ${target}: binary file. Try: open ${target}`, "err");
         return false;
       }
@@ -666,6 +764,7 @@ export function setupShell(): void {
     if (goto === "resume") return ["open resume.pdf"];
     if (goto === "open-resume") return ["open resume.pdf"];
     if (goto === "github") return ["cat github.url"];
+    if (goto === "sheet") return host === "nas" && dir ? ["ls -l"] : [];
     if (goto === "photos" || goto === "albums") {
       if (host === "home") return ["cd photos && ls -l"];
       return dir ? ["cd .. && ls -l"] : ["ls -l"];

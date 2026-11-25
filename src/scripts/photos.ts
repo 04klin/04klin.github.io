@@ -13,8 +13,16 @@ import { isActive, openApp, registerApp } from "./windows";
 interface Album {
   dir: string;
   season: Season | null;
-  photos: { name: string; alt: string; full: string }[];
+  photos: {
+    name: string;
+    alt: string;
+    full: string;
+    exif: Record<string, string | null>;
+  }[];
 }
+
+/** The settings in the viewer's readout, in a camera's order. */
+const READOUT = ["shutter", "aperture", "iso", "focal", "taken"];
 
 let albums: Album[] = [];
 let current: Album | null = null;
@@ -74,6 +82,14 @@ function showPhoto(i: number) {
   image.src = photo.full;
   part("[data-viewer-caption]").textContent =
     `${photo.name} · ${photo.alt} · ${index + 1}/${current.photos.length}`;
+  const readout = READOUT.flatMap((key) => {
+    const value = photo.exif[key];
+    if (!value) return [];
+    const item = document.createElement("span");
+    item.textContent = value;
+    return [item];
+  });
+  part("[data-viewer-exif]").replaceChildren(...readout);
   const single = current.photos.length < 2;
   root!
     .querySelectorAll<HTMLElement>(

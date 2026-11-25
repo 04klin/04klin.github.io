@@ -2,10 +2,12 @@
 /*
  * The Photos app (scripts/photos.ts): a gallery in its own window. Albums
  * down the side; the chosen album's photos as a grid; a click on one shows
- * it large in the viewer, which steps through the album. The terminal opens
+ * it large in the viewer, with its camera settings under it, which steps
+ * through the album. The terminal opens
  * it too, when a photo is opened there.
  */
 import { Image } from "astro:assets";
+import type { Exif } from "../exif";
 import { photo } from "../photos";
 import Window from "./Window.astro";
 
@@ -15,7 +17,7 @@ interface Props {
     date: string;
     season: string | null;
     link: string | null;
-    photos: { name: string; alt: string; full: string }[];
+    photos: { name: string; alt: string; full: string; exif: Exif }[];
   }[];
 }
 
@@ -111,7 +113,11 @@ const count = (n: number) => `${n} photo${n === 1 ? "" : "s"}`;
       >
       <div class="spinner" data-viewer-spinner></div>
       <img data-viewer-img alt="" hidden />
-      <figcaption data-viewer-caption></figcaption>
+      <figcaption>
+        <span data-viewer-caption></span>
+        <!-- The camera settings, set out like a viewfinder's readout. -->
+        <span class="viewer-exif" data-viewer-exif></span>
+      </figcaption>
       <button
         type="button"
         class="viewer-button viewer-prev"

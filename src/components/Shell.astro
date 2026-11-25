@@ -11,11 +11,13 @@
  *
  * - the notice and the home `ls` output, which are also what shows
  *   without JavaScript,
- * - <template>s for the albums listing and for each album's thumbnails,
+ * - <template>s for the albums listing and for each album's thumbnails
+ *   (`ls`) and its contact sheet of camera settings (`ls -l`),
  * - the album data (large images for the Photos viewer, seasons) as JSON for the script.
  */
 import type { ImageMetadata } from "astro";
 import { Image, getImage } from "astro:assets";
+import { exifOf } from "../exif";
 import { albums, camera, flickrUrl, photo } from "../photos";
 import { seasonOf } from "../scripts/seasons";
 import { contact, features, shellHost } from "../site";
@@ -54,6 +56,7 @@ const data = await Promise.all(
         name: p.file,
         alt: p.alt,
         full: await viewerSrc(photo(p.file)),
+        exif: exifOf(p.file),
       })),
     ),
   })),
@@ -254,6 +257,58 @@ const shellData = {
       </li>
     </ul>
   </template>
+
+  <!--
+    `ls -l` inside an album: a contact sheet, each photo with its camera
+    settings (src/exif.ts). A click on a name opens the photo.
+  -->
+  {
+    data.map((album) => (
+      <template data-out={`album-long:${album.dir}`}>
+        <ul class="ls ls-long ls-exif">
+          {album.photos.map((p, i) => (
+            <li>
+              <span class="ls-meta ls-perm">-rw-r--r--</span>
+              <span class="ls-meta ls-num">{p.exif.shutter ?? "-"}</span>
+              <span class="ls-meta">{p.exif.aperture ?? "-"}</span>
+              <span class="ls-meta ls-iso">{p.exif.iso ?? "-"}</span>
+              <span class="ls-meta ls-num">{p.exif.focal ?? "-"}</span>
+              <span class="ls-meta ls-taken">{p.exif.taken ?? "-"}</span>
+              <button
+                type="button"
+                class="ls-file"
+                data-photo={i}
+                data-album={album.dir}
+                aria-label={`Open ${p.name}: ${p.alt}`}
+              >
+                <FileIcon name={p.name} />
+                {p.name}
+              </button>
+            </li>
+          ))}
+          {album.link && (
+            <li>
+              <span class="ls-meta ls-perm">-rw-r--r--</span>
+              <span class="ls-meta" />
+              <span class="ls-meta" />
+              <span class="ls-meta ls-iso" />
+              <span class="ls-meta" />
+              <span class="ls-meta ls-taken" />
+              <a
+                class="ls-file"
+                href={album.link}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileIcon name="album.url" />
+                album.url
+              </a>
+            </li>
+          )}
+        </ul>
+      </template>
+    ))
+  }
 
   <!-- `ls` inside an album: thumbnails, like a terminal image preview. -->
   {
